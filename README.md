@@ -41,4 +41,5 @@ handlers:
  
 skip_files:
 - (?!(build|extensions|podspec.yaml).*)
+- ^extensions/(?!__init__\.py$|grow_build_server).*
 ```
