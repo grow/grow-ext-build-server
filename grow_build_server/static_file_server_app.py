@@ -38,7 +38,10 @@ class StaticFileServerApplication(object):
 
         status = '200 OK'
         mimetype = mimetypes.guess_type(path_on_disk)[0]
-        response_headers = [('Content-Type', mimetype)]
+        response_headers = [
+            ('Content-Type', mimetype),
+            ('Grow-Build-Server-Path', path_on_disk),
+        ]
         start_response(status, response_headers)
         content = open(path_on_disk).read()
         return [content]
