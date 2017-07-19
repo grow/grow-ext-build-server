@@ -31,11 +31,14 @@ Use an `app.yaml` file like the one below.
 ```
 # Default app.yaml.
 
-runtime: python27
 api_version: 1
+runtime: python27
 threadsafe: true
 
 handlers:
 - url: /.*
   script: extensions.grow_build_server.app
+ 
+skip_files:
+- (?!(build|extensions|podspec.yaml).*)
 ```

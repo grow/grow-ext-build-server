@@ -5,3 +5,6 @@ threadsafe: true
 handlers:
 - url: /.*
   script: extensions.grow_build_server.app
+ 
+skip_files:
+- (?!(build|extensions|podspec.yaml).*)
