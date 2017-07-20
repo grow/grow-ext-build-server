@@ -3,9 +3,12 @@ import os
 
 class LocaleRedirectMiddleware(object):
 
-    def __init__(self, app, root, locales=None):
+    def __init__(self, app, root, locales=None, default_locale=None):
         self.app = app
         self.root = root
+        self.default_locale = default_locale
+        if self.default_locale:
+            self.default_locale = self.default_locale.lower()
         self.locales = locales or []
         self.locales = [locale.lower() for locale in self.locales]
         self.territories_to_identifiers = {}
@@ -14,13 +17,22 @@ class LocaleRedirectMiddleware(object):
             territory = territory.lower()
             self.territories_to_identifiers[territory] = locale
 
+    def redirect(self, locale_start_response, url):
+        if url.endswith('/index.html'):
+            url = url[:-11]
+        url = '/{}'.format(url)
+        status = '302 Found'
+        response_headers = [('Location', url)]
+        locale_start_response(status, response_headers)
+        return []
+
     def __call__(self, environ, start_response):
         # Extract territory from URL. If the URL is localized, return.
         # If it's not localized, check if a cookie is set.
         # If a cookie is set already, don't do anything and serve the app.
         # If no cookie, determine if there's a file on disk that matches
         # the locale, set the cookie, and redirect.
-        url_path = environ['PATH_INFO'].strip('/')
+        url_path = environ['PATH_INFO'].lstrip('/')
         locale_part = url_path.split('/', 1)[0]
         locale_from_url = None
         territory_from_url = None
@@ -45,25 +57,30 @@ class LocaleRedirectMiddleware(object):
             headers.append(('Grow-Build-Server-Territory', territory_from_header))
             return start_response(status, headers, exc_info)
 
-        # Do nothing if user is in a country we don't have.
-        if not locale_from_header:
-            return self.app(environ, locale_start_response)
         if not url_path:
             url_path = 'index.html'
         if url_path.endswith('/'):
             url_path += '/index.html'
         root_path_on_disk = os.path.join(self.root, url_path)
-        localized_path_on_disk = os.path.join(
-                self.root, locale_from_header, url_path)
+        localized_path_on_disk = None
+        if locale_from_header:
+            localized_path_on_disk = os.path.join(
+                    self.root, locale_from_header, url_path)
+
+        # If no file is found at the current location, and if we have a file at
+        # a path corresponding to the default locale, redirect.
+        if self.default_locale:
+            default_localized_path_on_disk = os.path.join(
+                    self.root, self.default_locale, url_path)
+            if not os.path.exists(root_path_on_disk) \
+                    and os.path.exists(default_localized_path_on_disk):
+                url = os.path.join(self.default_locale, url_path)
+                return self.redirect(locale_start_response, url)
 
         # Redirect the user if we have a localized file.
-        if os.path.exists(localized_path_on_disk):
+        if locale_from_header and os.path.exists(localized_path_on_disk):
             url = os.path.join(locale_from_header, url_path)
-            if url.endswith('/index.html'):
-                url = url[:-11]
-            url = '/{}'.format(url)
-            status = '302 Found'
-            response_headers = [('Location', url)]
-            locale_start_response(status, response_headers)
-            return []
+            return self.redirect(locale_start_response, url)
+
+        # Do nothing if user is in a country we don't have.
         return self.app(environ, locale_start_response)
