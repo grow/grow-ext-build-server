@@ -67,6 +67,11 @@ class LocaleRedirectMiddleware(object):
             localized_path_on_disk = os.path.join(
                     self.root, locale_from_header, url_path)
 
+        # Redirect the user if we have a localized file.
+        if locale_from_header and os.path.exists(localized_path_on_disk):
+            url = os.path.join(locale_from_header, url_path)
+            return self.redirect(locale_start_response, url)
+
         # If no file is found at the current location, and if we have a file at
         # a path corresponding to the default locale, redirect.
         if self.default_locale:
@@ -76,11 +81,6 @@ class LocaleRedirectMiddleware(object):
                     and os.path.exists(default_localized_path_on_disk):
                 url = os.path.join(self.default_locale, url_path)
                 return self.redirect(locale_start_response, url)
-
-        # Redirect the user if we have a localized file.
-        if locale_from_header and os.path.exists(localized_path_on_disk):
-            url = os.path.join(locale_from_header, url_path)
-            return self.redirect(locale_start_response, url)
 
         # Do nothing if user is in a country we don't have.
         return self.app(environ, locale_start_response)
