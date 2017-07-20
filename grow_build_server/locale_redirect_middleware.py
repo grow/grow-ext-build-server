@@ -61,6 +61,7 @@ class LocaleRedirectMiddleware(object):
             url = os.path.join(locale_from_header, url_path)
             if url.endswith('/index.html'):
                 url = url[:-11]
+            url = '/{}'.format(url)
             status = '302 Found'
             response_headers = [('Location', url)]
             locale_start_response(status, response_headers)
