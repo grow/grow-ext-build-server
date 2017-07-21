@@ -1,5 +1,6 @@
 from locale_redirect_middleware import LocaleRedirectMiddleware
 from static_file_server_app import StaticFileServerApplication
+import search_app
 import logging
 import os
 import yaml
@@ -8,6 +9,7 @@ DEFAULT_DIR = os.getenv('GROW_BUILD_DIR', 'build')
 
 # Get default locales from podspec, if it exists.
 podspec_path = os.path.join(os.path.dirname(__file__), '..', '..', 'podspec.yaml')
+podspec_path = os.path.abspath(podspec_path)
 if not os.path.exists(podspec_path):
     locales = []
     default_locale = None
@@ -24,6 +26,10 @@ root = os.path.join(os.path.dirname(__file__), '..', '..', DEFAULT_DIR)
 root = os.path.abspath(root)
 
 _static_app = StaticFileServerApplication(root=root)
+
 app = LocaleRedirectMiddleware(
         _static_app, root=root, locales=locales,
         default_locale=default_locale)
+
+cron = search_app.CronApp(config={'root': root, 'locales': locales,})
+api = search_app.api_app
