@@ -3,6 +3,7 @@ from static_file_server_app import StaticFileServerApplication
 from sheets_auth_middleware import SheetsAuthMiddleware
 from protorpc.wsgi import service
 import access_requests
+import cors
 import search_app
 import logging
 import os
@@ -53,6 +54,6 @@ app = SheetsAuthMiddleware(
         _locale_app, static_paths=static_paths,
         config=build_server_config)
 
-api = service.service_mappings((
+api = cors.CorsMiddleware(service.service_mappings((
     ('/_grow/api/search.*', search_app.SearchService),
-))
+)))
