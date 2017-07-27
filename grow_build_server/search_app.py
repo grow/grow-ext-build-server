@@ -55,7 +55,10 @@ def _parse_locale_from_path(doc_id, locales):
     part = part.lower()
     locales = [locale.lower() for locale in locales]
     if part in locales:
-        return part
+        language = part.split('_')[0]
+        if language == 'fil':
+            language = 'tl'
+        return language
 
 
 def _get_fields_from_file(root, file_path, locales=None):
@@ -175,15 +178,3 @@ class SearchService(remote.Service):
         resp.documents = docs
         resp.cursor = cursor
         return resp
-
-
-def CronApp(config=None):
-    return webapp2.WSGIApplication([
-        ('/_grow/search/index', IndexHandler),
-        ('/_ah/warmup', IndexHandler),
-    ], config=config)
-
-
-api_app = service.service_mappings((
-    ('/_grow/api/search.*', SearchService),
-))

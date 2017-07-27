@@ -1,0 +1,103 @@
+<style>
+  .logo {
+    height: 40px;
+    margin: 15px auto;
+    max-width: 540px;
+  }
+
+  blockquote {
+    background: #f5f5f5;
+    padding: 10px;
+    margin: 20px 0;
+  }
+
+  .pad {
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    background: #f5f5f5;
+    border-radius: 2px;
+    box-sizing: border-box;
+    color: #333;
+    padding: 20px 25px;
+  }
+
+  .main {
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    background: #fff;
+    border-radius: 2px;
+    font-family: arial, sans-serif;
+    font-size: 15px;
+    margin: 0 auto;
+    max-width: 500px;
+    padding: 20px;
+  }
+
+  .btn {
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    background-color: #4D90FE;
+    border: 1px solid #3079ED;
+    border-radius: 2px;
+    box-sizing: border-box;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    font-weight: bold !important;
+    font: 15px 'Roboto', 'RobotoDraft', arial, sans-serif;
+    line-height: 1.54;
+    padding: 8px 12px;
+    vertical-align: top;
+    text-align: center;
+    text-decoration: none;
+    text-shadow: 0 -1px 0 rgba(0,0,0,.08);
+  }
+
+  .centered {
+    text-align: center;
+  }
+
+  p {
+    font-size: 15px;
+    margin: 15px 0;
+  }
+
+  .main p {
+    margin-top: 0;
+  }
+
+  .main p:last-child {
+    margin-bottom: 0;
+  }
+
+  .footer {
+    color: #999;
+    font-size: 12px;
+    margin: 15px auto;
+    max-width: 500px;
+    text-align: center;
+  }
+
+  hr {
+    background-color: #dadada;
+    border: none;
+    height: 1px;
+    margin: 30px 0;
+  }
+
+  img {
+    max-width: 100%;
+  }
+</style>
+<div class="pad">
+  {#
+  <div class="logo"><a href="#"><img height="40" src="#" alt=""></a></div>
+  #}
+  <div class="main">
+    {% block main %}{% endblock %}
+  </div>
+  {#
+  <div class="footer">
+  </div>
+  #}
+</div>

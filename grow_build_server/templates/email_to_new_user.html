@@ -1,0 +1,6 @@
+{% extends "email.html" %}
+
+{% block main %}
+  <p>Your request to access {{config.title}} has been approved.</p>
+  <p class="centered"><a class="btn" href="{{config.url}}">Visit website</a></p>
+{% endblock %}
