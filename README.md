@@ -31,6 +31,9 @@ api_version: 1
 runtime: python27
 threadsafe: true
 
+inbound_services:
+- warmup
+
 handlers:
 - url: /_grow/cron.*
   script: extensions.grow_build_server.cron

@@ -1,4 +1,6 @@
+from google.appengine.api import memcache
 from google.appengine.api import search
+from google.appengine.ext import ndb
 from protorpc import messages
 from protorpc import remote
 from protorpc.wsgi import service
@@ -30,6 +32,20 @@ class SearchRequest(messages.Message):
 class SearchResponse(messages.Message):
     documents = messages.MessageField(DocumentMessage, 1, repeated=True)
     cursor = messages.StringField(2)
+
+
+class SearchSettings(ndb.Model):
+    last_indexed_version = ndb.StringProperty()
+
+    @classmethod
+    def instance(cls):
+        key = ndb.Key(cls.__name__, 'SearchSettings')
+        ent = key.get()
+        if ent is None:
+            ent = cls(key=key)
+            ent.put()
+            logging.info('Created SearchSettings -> {}'.format(key))
+        return ent
 
 
 def _parse_locale_from_path(doc_id, locales):
@@ -100,6 +116,17 @@ def index_searchable_docs(root, locales=None):
         logging.info('Indexed -> {}'.format(doc.doc_id))
 
 
+def check_and_index_searchable_docs(root, locales, force=False):
+    cache_key = 'grow-search-index:{}'.format(os.getenv('CURRENT_VERSION_ID', ''))
+    has_indexed = memcache.get(cache_key)
+    if has_indexed and not force:
+        logging.info('Already indexed -> {}'.format(cache_key))
+        return
+    index_searchable_docs(root, locales=locales)
+    memcache.set(cache_key, True)
+    logging.info('Done indexing -> {}'.format(cache_key))
+
+
 def _get_field(doc, name):
     for field in doc.fields:
         if field.name == name:
@@ -128,12 +155,13 @@ def execute_search(message):
     return docs, cursor
 
 
-class CronIndexHandler(webapp2.RequestHandler):
+class IndexHandler(webapp2.RequestHandler):
 
     def get(self):
-        index_searchable_docs(
-            self.app.config['root'],
-            locales=self.app.config['locales'])
+        root = self.app.config['root']
+        locales = self.app.config['locales']
+        force = self.request.get('force')
+        check_and_index_searchable_docs(root, locales, force)
 
 
 class SearchService(remote.Service):
@@ -151,7 +179,8 @@ class SearchService(remote.Service):
 
 def CronApp(config=None):
     return webapp2.WSGIApplication([
-        ('/_grow/cron/index', CronIndexHandler),
+        ('/_grow/search/index', IndexHandler),
+        ('/_ah/warmup', IndexHandler),
     ], config=config)
 
 
