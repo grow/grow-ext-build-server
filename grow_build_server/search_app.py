@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 from protorpc import messages
 from protorpc import remote
 from protorpc.wsgi import service
+import bs4
 import logging
 import os
 import webapp2
@@ -17,6 +18,7 @@ class DocumentMessage(messages.Message):
     language = messages.StringField(3)
     territory = messages.StringField(4)
     path = messages.StringField(5)
+    snippet = messages.StringField(6)
 
 
 class QueryMessage(messages.Message):
@@ -51,7 +53,8 @@ class SearchSettings(ndb.Model):
 def _parse_locale_from_path(doc_id, locales):
     if not locales:
         return
-    part, _ = doc_id.lstrip('/').split('/', 1)
+    part = doc_id.lstrip('/')
+    part = part.split('/', 1)[0] if '/' in part else part
     part = part.lower()
     locales = [locale.lower() for locale in locales]
     if part in locales:
@@ -66,12 +69,13 @@ def _get_fields_from_file(root, file_path, locales=None):
             if file_path.endswith('/index.html') else file_path
     doc_id = doc_id[len(root):]
     html = open(file_path).read()
+    soup = bs4.BeautifulSoup(html)
     fields = {}
     fields['doc_id'] = doc_id
     fields['language'] = _parse_locale_from_path(doc_id, locales)
     # Max size, 500 is some buffer for the rest of the request.
     fields['html'] = html[:1048576-500]
-    fields['title'] = ''
+    fields['title'] = soup.title.string.strip()
     return fields
 
 
@@ -130,6 +134,12 @@ def check_and_index_searchable_docs(root, locales, force=False):
     logging.info('Done indexing -> {}'.format(cache_key))
 
 
+def _get_expression(doc, name):
+    for expression in doc.expressions:
+        if expression.name == name:
+            return expression.value
+
+
 def _get_field(doc, name):
     for field in doc.fields:
         if field.name == name:
@@ -154,6 +164,7 @@ def execute_search(message):
             doc_message.locale = _get_field(doc, 'locale')
             doc_message.title = _get_field(doc, 'title')
             doc_message.path = _get_field(doc, 'path')
+            doc_message.snippet = _get_expression(doc, 'html')
             docs.append(doc_message)
     return docs, cursor
 
