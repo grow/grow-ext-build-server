@@ -1,15 +1,15 @@
 {% extends "email.html" %}
 
 {% block main %}
-  <p>Hello {{config.title}} administrators,</p>
+  <p>Hello {{email_config.title}} administrators,</p>
   <p>The following user has requested access:</p>
   <blockquote>
-    <b>{{request.email}}</b>
+    <b>{{req.email}}</b>
   </blockquote>
-  <p class="centered"><a class="btn" href="#">Approve user</a></p>
+  <p class="centered"><a class="btn" href="{{email_config.base_url}}/_grow/access-requests/approve?user={{req.email}}">Approve user</a></p>
   <p>
     <table style="margin-bottom: 20px">
-      {% for key, val in request.form.iteritems() %}
+      {% for key, val in req.form.iteritems() %}
       <tr>
         <td style="width: 140px"><b>{{key}}</b></td>
         <td>{{val}}</td>

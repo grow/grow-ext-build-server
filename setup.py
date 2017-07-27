@@ -11,4 +11,12 @@ setup(
     packages=[
         'grow_build_server',
     ],
+    install_requires=[
+        'google-api-python-client',
+        'google-auth',
+        'jinja2',
+        'premailer',
+        'requests',
+        'requests-toolbelt',
+    ],
 )

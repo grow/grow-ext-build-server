@@ -10,6 +10,7 @@ import os
 import webapp2
 
 INDEX = 'pages'
+NAMESPACE = os.getenv('CURRENT_VERSION_ID')
 
 
 class DocumentMessage(messages.Message):
@@ -117,7 +118,8 @@ def collect_searchable_docs(root, locales=None):
 
 def index_searchable_docs(root, locales=None):
     searchable_docs = collect_searchable_docs(root, locales=locales)
-    index = search.Index(INDEX)
+    index = search.Index(INDEX, namespace=NAMESPACE)
+    logging.info('Using FTS namespace -> {}'.format(NAMESPACE))
     for doc in searchable_docs:
         index.put(doc)
         logging.info('Indexed -> {}'.format(doc.doc_id))
@@ -153,7 +155,7 @@ def execute_search(message):
     if message.limit:
         optons.limit = message.limit
     query = search.Query(message.q, options=options)
-    index = search.Index(INDEX)
+    index = search.Index(INDEX, namespace=NAMESPACE)
     results = index.search(query)
     cursor = results.cursor
     docs = []

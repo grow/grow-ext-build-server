@@ -90,14 +90,15 @@
   }
 </style>
 <div class="pad">
-  {#
-  <div class="logo"><a href="#"><img height="40" src="#" alt=""></a></div>
-  #}
+  {% if email_config.logo_url %}
+    <div class="logo"><a href="{{email_config.base_url}}"><img height="40" src="{{email_config.logo_url}}" alt="{{email_config.title}}"></a></div>
+  {% endif %}
   <div class="main">
     {% block main %}{% endblock %}
   </div>
-  {#
+  {% if email_config.footer %}
   <div class="footer">
+    {{email_config.footer|safe}}
   </div>
-  #}
+  {% endif %}
 </div>
