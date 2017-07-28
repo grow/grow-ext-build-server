@@ -7,11 +7,10 @@
     <b>{{req.email}}</b>
   </blockquote>
   <div class="main__cta">
-    <a class="btn" target="_blank" href="{{email_config.base_url}}/_grow/access-requests/approve/{{req.email}}">Approve user</a>
+    <a class="btn" target="_blank" href="{{email_config.base_url.rstrip('/')}}/_grow/access-requests/approve/{{req.email}}">Approve user</a>
   </div>
   <div class="main__form">
-    {% for key, val in req.form.iteritems() %}
-      {% if not key or not val %}{% continue %}{% endif %}
+    {% for key, val in req.form.iteritems() if key and val %}
       <div class="main__form__key">
         {{key}}
       </div>

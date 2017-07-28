@@ -38,4 +38,12 @@ class Emailer(object):
     def env(self):
         path = os.path.join(os.path.dirname(__file__), 'templates')
         loader = jinja2.FileSystemLoader([path])
-        return jinja2.Environment(loader=loader, autoescape=True, trim_blocks=True)
+        extensions = [
+            'jinja2.ext.autoescape',
+            'jinja2.ext.do',
+            'jinja2.ext.loopcontrols',
+            'jinja2.ext.with_',
+        ],
+        return jinja2.Environment(
+                loader=loader, extensions=extensions, autoescape=True,
+                trim_blocks=True)

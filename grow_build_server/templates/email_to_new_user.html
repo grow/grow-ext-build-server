@@ -2,5 +2,7 @@
 
 {% block main %}
   <p>Your request to access {{email_config.title}} has been approved.</p>
-  <p class="centered"><a class="btn" href="{{email_config.base_url}}">Visit website</a></p>
+  <div class="main__cta">
+    <a class="btn" href="{{email_config.base_url}}">Visit website</a>
+  </div>
 {% endblock %}
