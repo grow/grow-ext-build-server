@@ -6,15 +6,18 @@
   <blockquote>
     <b>{{req.email}}</b>
   </blockquote>
-  <p class="centered"><a class="btn" target="_blank" href="{{email_config.base_url}}/_grow/access-requests/approve/{{req.email}}">Approve user</a></p>
-  <p>
-    <table>
-      {% for key, val in req.form.iteritems() %}
-      <tr>
-        <td style="width: 140px"><b>{{key}}</b></td>
-        <td>{{val}}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </p>
+  <div class="main__cta">
+    <a class="btn" target="_blank" href="{{email_config.base_url}}/_grow/access-requests/approve/{{req.email}}">Approve user</a>
+  </div>
+  <div class="main__form">
+    {% for key, val in req.form.iteritems() %}
+      {% if not key or not val %}{% continue %}{% endif %}
+      <div class="main__form__key">
+        {{key}}
+      </div>
+      <div class="main__form__value">
+        {{val}}
+      </div>
+    {% endfor %}
+  </div>
 {% endblock %}

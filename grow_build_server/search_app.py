@@ -70,7 +70,7 @@ def _get_fields_from_file(root, file_path, locales=None):
             if file_path.endswith('/index.html') else file_path
     doc_id = doc_id[len(root):]
     html = open(file_path).read()
-    soup = bs4.BeautifulSoup(html)
+    soup = bs4.BeautifulSoup(html, 'lxml')
     fields = {}
     fields['doc_id'] = doc_id
     fields['language'] = _parse_locale_from_path(doc_id, locales)

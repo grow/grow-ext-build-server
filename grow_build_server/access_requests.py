@@ -69,6 +69,7 @@ def send_email_to_new_user(email, email_config):
         subject=subject,
         template_path='email_to_new_user.html',
         kwargs={'email': email, 'email_config': email_config})
+    logging.info('Emailed new user -> {}'.format(email))
 
 
 def send_email_to_admins(req, email_config):
@@ -80,13 +81,14 @@ def send_email_to_admins(req, email_config):
             email_config['title'], req['email']),
         template_path='email_to_admins.html',
         kwargs={'req': req, 'email_config': email_config})
+    logging.info('Emailed admin -> {}'.format(email))
 
 
 def add_user_to_acl(new_user_email):
     logging.info('Adding user to ACL -> {}'.format(new_user_email))
     instance = google_sheets.Settings.instance()
     sheet_id = instance.sheet_id
-    gid = instance.sheet_gid
+    gid = instance.sheet_gid_global
     rows = [[new_user_email]]
     google_sheets.append_rows(sheet_id, gid, rows)
 

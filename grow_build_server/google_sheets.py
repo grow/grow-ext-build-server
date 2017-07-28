@@ -18,8 +18,9 @@ discovery.logger.setLevel(logging.WARNING)
 
 class Settings(ndb.Model):
     sheet_id = ndb.StringProperty()
-    sheet_gid = ndb.StringProperty()
+    sheet_gid_global = ndb.StringProperty()
     sheet_gid_admins = ndb.StringProperty()
+    sheet_gid_private = ndb.StringProperty()
 
     @classmethod
     def instance(cls):
