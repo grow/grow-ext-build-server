@@ -12,6 +12,7 @@ setup(
         'grow_build_server',
     ],
     install_requires=[
+        'bs4',
         'google-api-python-client',
         'google-auth',
         'jinja2',
