@@ -112,17 +112,15 @@ class ApproveAccessRequestHandler(webapp2.RequestHandler):
     def get(self, new_user_email):
         admins = get_admins()
         user = users.get_current_user()
-#        # Only admins can approve access.
-#        logging.info(admins)
-#        logging.info(user.email())
-#        if user.email() not in admins:
-#            webapp2.abort(403)
-#            return
+        # Only admins can approve access.
+        if user.email() not in admins:
+            webapp2.abort(403)
+            return
         acl_sheet_id = google_sheets.Settings.instance().sheet_id
         url = google_sheets.get_spreadsheet_url(acl_sheet_id)
         email_config = self.app.config['access_requests']['emails']
         add_user_to_acl(new_user_email)
-#        send_email_to_new_user(new_user_email, email_config)
+        send_email_to_new_user(new_user_email, email_config)
         template = jinja2_env().get_template('base.html')
         html = template.render({
             'email': new_user_email,
