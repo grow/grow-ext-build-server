@@ -2,8 +2,8 @@ from google.appengine.api import users
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import mail_handlers
 import emailer
-import logging
 import google_sheets
+import logging
 import webapp2
 
 
@@ -81,16 +81,16 @@ def send_email_to_admins(req, email_config):
 
 
 def add_user_to_acl(new_user_email):
+    logging.info('Adding user to ACL -> {}'.format(new_user_email))
     instance = google_sheets.Settings.instance()
-    sheet_id = isntance.sheet_id
-    pass
+    sheet_id = instance.sheet_id
 
 
 def get_admins(notify_only=False):
     instance = google_sheets.Settings.instance()
     sheet_id = instance.sheet_id
     admins_gid = instance.sheet_gid_admins
-    admins = google_sheets.get_sheet(sheet_id, admins_gid)
+    admins = google_sheets.get_sheet(sheet_id, gid=admins_gid)
     if notify_only:
         return [row.get('email') for row in admins if row.get('notify')]
     return [row.get('email') for row in admins]
@@ -99,6 +99,7 @@ def get_admins(notify_only=False):
 class ApproveAccessRequestHandler(webapp2.RequestHandler):
 
     def get(self, new_user_email):
+        admins = get_admins()
         user = users.get_current_user()
         # Only admins can approve access.
         if user.email not in admins:
