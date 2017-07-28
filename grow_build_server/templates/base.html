@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>{{email_config.title}}</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   html,
   body {
@@ -20,6 +21,20 @@
     padding: 30px;
     color: #333;
     line-height: 1.5em;
+  }
+
+  .main__card__body {
+    display: flex;
+    align-items: center;
+  }
+
+  .main__card__body > div:first-child {
+    color: #43A047;
+    padding-right: 30px;
+  }
+
+  .main__card__body > div:first-child i {
+    font-size: 48px;
   }
 
   .main__card__title {
@@ -52,8 +67,13 @@
         {{email_config.title}}
       </div>
       <div class="main__card__body">
-        <p>The access request for <b>{{email}}</b> was approved and an email notification was sent.</p>
-        <p>You may now close this window.</p>
+        <div>
+          <i class="material-icons">check_circle</i>
+        </div>
+        <div>
+          <p>The access request for <b>{{email}}</b> was approved and an email notification was sent.</p>
+          <p>You may now close this window.</p>
+        </div>
       </div>
       <div class="main__card__cta">
         <a class="button" href="{{spreadsheet_url}}">Open users spreadsheet</a>

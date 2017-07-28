@@ -43,7 +43,7 @@ class Emailer(object):
             'jinja2.ext.do',
             'jinja2.ext.loopcontrols',
             'jinja2.ext.with_',
-        ],
+        ]
         return jinja2.Environment(
                 loader=loader, extensions=extensions, autoescape=True,
                 trim_blocks=True)
