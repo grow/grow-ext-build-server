@@ -126,3 +126,11 @@ compose it into your own Python-based server as you like.
 
 - Only `/{locale}/{path}/` URL formats are supported.
 - Deterministic behavior for multi-language territories. 
+
+## Enable services
+
+```
+gcloud service-management enable sheets.googleapis.com --project=$(project)
+gcloud service-management enable drive --project=$(project)
+gcloud service-management enable storage-api.googleapis.com --project=$(project)
+```

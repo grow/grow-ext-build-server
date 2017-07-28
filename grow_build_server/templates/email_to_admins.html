@@ -6,9 +6,9 @@
   <blockquote>
     <b>{{req.email}}</b>
   </blockquote>
-  <p class="centered"><a class="btn" href="{{email_config.base_url}}/_grow/access-requests/approve?user={{req.email}}">Approve user</a></p>
+  <p class="centered"><a class="btn" target="_blank" href="{{email_config.base_url}}/_grow/access-requests/approve/{{req.email}}">Approve user</a></p>
   <p>
-    <table style="margin-bottom: 20px">
+    <table>
       {% for key, val in req.form.iteritems() %}
       <tr>
         <td style="width: 140px"><b>{{key}}</b></td>

@@ -3,7 +3,9 @@ from google.appengine.ext import ndb
 from google.appengine.ext.webapp import mail_handlers
 import emailer
 import google_sheets
+import jinja2
 import logging
+import os
 import webapp2
 
 
@@ -54,19 +56,19 @@ def process_access_requests(config):
         send_email_to_admins(
                 req,
                 email_config=config['access_requests']['emails'])
-        SeenAccessRequest.save(req['form']['Timestamp'], req['email'])
+        if req['form']['Timestamp'] and req['email']:
+            SeenAccessRequest.save(req['form']['Timestamp'], req['email'])
 
 
-def send_email_to_new_user(req, email_config):
+def send_email_to_new_user(email, email_config):
     title =  '[{}] Your access request has been approved'
     subject = title.format(email_config['title'])
-    admin_emails = []
     emailer_ent = emailer.Emailer()
     emailer_ent.send(
-        to=req['email'],
+        to=email,
         subject=subject,
         template_path='email_to_new_user.html',
-        kwargs={'req': req, 'email_config': email_config})
+        kwargs={'email': email, 'email_config': email_config})
 
 
 def send_email_to_admins(req, email_config):
@@ -84,6 +86,9 @@ def add_user_to_acl(new_user_email):
     logging.info('Adding user to ACL -> {}'.format(new_user_email))
     instance = google_sheets.Settings.instance()
     sheet_id = instance.sheet_id
+    gid = instance.sheet_gid
+    rows = [[new_user_email]]
+    google_sheets.append_rows(sheet_id, gid, rows)
 
 
 def get_admins(notify_only=False):
@@ -96,19 +101,35 @@ def get_admins(notify_only=False):
     return [row.get('email') for row in admins]
 
 
+def jinja2_env():
+    path = os.path.join(os.path.dirname(__file__), 'templates')
+    loader = jinja2.FileSystemLoader([path])
+    return jinja2.Environment(loader=loader, autoescape=True, trim_blocks=True)
+
+
 class ApproveAccessRequestHandler(webapp2.RequestHandler):
 
     def get(self, new_user_email):
         admins = get_admins()
         user = users.get_current_user()
-        # Only admins can approve access.
-        if user.email not in admins:
-            webapp2.abort(403)
-            return
+#        # Only admins can approve access.
+#        logging.info(admins)
+#        logging.info(user.email())
+#        if user.email() not in admins:
+#            webapp2.abort(403)
+#            return
+        acl_sheet_id = google_sheets.Settings.instance().sheet_id
+        url = google_sheets.get_spreadsheet_url(acl_sheet_id)
+        email_config = self.app.config['access_requests']['emails']
         add_user_to_acl(new_user_email)
-        send_email_to_new_user(
-                new_user_email,
-                self.app.config['access_requests']['emails'])
+#        send_email_to_new_user(new_user_email, email_config)
+        template = jinja2_env().get_template('base.html')
+        html = template.render({
+            'email': new_user_email,
+            'email_config': email_config,
+            'spreadsheet_url': url,
+        })
+        self.response.out.write(html)
 
 
 class ProcessHandler(webapp2.RequestHandler):

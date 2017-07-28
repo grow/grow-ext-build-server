@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>{{email_config.title}}</title>
+<style>
+  html,
+  body {
+    -webkit-font-smoothing: antialiased;
+    background: #ddd;
+    font-family: 'Roboto', 'arial', 'helvetica neue', sans-serif;
+    padding: 30px;
+  }
+
+  .main {
+    max-width: 500px;
+  }
+  
+  .main__card {
+    background: #efefef;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, .05);
+    padding: 30px;
+    color: #333;
+    line-height: 1.5em;
+  }
+
+  .main__card__title {
+    color: black;
+    font-size: 24px;
+    line-height: 30px;
+    margin-bottom: 20px;
+  }
+
+  .main__card__cta {
+    margin-top: 30px;
+  }
+
+  .button {
+    background-color: #4D90FE;
+    border-radius: 2px;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.25px;
+    font-size: 12px;
+    padding: 10px 20px;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+</style>
+<body>
+  <div class="main">
+    <div class="main__card">
+      <div class="main__card__title">
+        {{email_config.title}}
+      </div>
+      <div class="main__card__body">
+        <p>The access request for <b>{{email}}</b> was approved and an email notification was sent.</p>
+        <p>You may now close this window.</p>
+      </div>
+      <div class="main__card__cta">
+        <a class="button" href="{{spreadsheet_url}}">Open users spreadsheet</a>
+      </div>
+    </div>
+  </div>

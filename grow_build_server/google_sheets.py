@@ -18,6 +18,7 @@ discovery.logger.setLevel(logging.WARNING)
 
 class Settings(ndb.Model):
     sheet_id = ndb.StringProperty()
+    sheet_gid = ndb.StringProperty()
     sheet_gid_admins = ndb.StringProperty()
 
     @classmethod
@@ -76,6 +77,38 @@ def get_sheet(sheet_id, gid=None):
         result = [row for row in reader]
         memcache.set(cache_key, result, 60)
     return result
+
+
+def append_rows(sheet_id, gid, rows_to_append):
+    rows = []
+    for row in rows_to_append:
+        values = []
+        for item in row:
+            values.append({
+                'userEnteredValue': {
+                    'stringValue': item,
+                },
+            })
+        rows.append({'values': values})
+    service = create_service(api='sheets', version='v4')
+    requests = []
+    requests.append({
+        'appendCells': {
+            'fields': 'userEnteredValue',
+            'rows': rows,
+            'sheetId': gid,
+        },
+    })
+    body = {'requests': requests}
+    resp = service.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id, body=body).execute()
+
+
+def get_spreadsheet_url(sheet_id, gid=None):
+    url = 'https://docs.google.com/spreadsheets/d/{}'.format(sheet_id)
+    if gid:
+        url += '#gid={}'.format(gid)
+    return url
 
 
 def create_sheet(title='Untitled Grow Website Access'):
