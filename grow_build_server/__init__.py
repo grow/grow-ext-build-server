@@ -1,6 +1,7 @@
 from locale_redirect_middleware import LocaleRedirectMiddleware
 from static_file_server_app import StaticFileServerApplication
 from sheets_auth_middleware import SheetsAuthMiddleware
+from protected_middleware import ProtectedMiddleware
 from protorpc.wsgi import service
 import access_requests
 import cors
@@ -51,9 +52,10 @@ _static_app = StaticFileServerApplication(root=root)
 _locale_app = LocaleRedirectMiddleware(
         _static_app, root=root, locales=locales,
         default_locale=default_locale)
-app = SheetsAuthMiddleware(
+_sheets_auth_app = SheetsAuthMiddleware(
         _locale_app, static_paths=static_paths,
         config=build_server_config)
+app = ProtectedMiddleware(_sheets_auth_app, config=build_server_config)
 
 api = cors.CorsMiddleware(service.service_mappings((
     ('/_grow/api/search.*', search_app.SearchService),

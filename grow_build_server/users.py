@@ -40,7 +40,7 @@ class User(object):
 
     def can_read(self, sheet, path):
         for row in sheet:
-            if self.email == row.get('email') \
-                    or self.domain == row.get('domain'):
+            if self.email.lower() == row.get('email', '').lower() \
+                    or self.domain == row.get('domain', '').lower():
                 return True
         return False
