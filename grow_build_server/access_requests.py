@@ -73,6 +73,13 @@ def send_email_to_new_user(email, email_config):
 
 
 def send_email_to_admins(req, email_config):
+    # Clean req.
+    clean_form = {}
+    for key, val in req['form'].iteritems():
+        if isinstance(val, unicode:)
+            val = val.encode('utf-8')
+        clean_form[key] = val
+    req['form'] = clean_form
     admin_emails = get_admins(notify_only=True)
     emailer_ent = emailer.Emailer()
     emailer_ent.send(
