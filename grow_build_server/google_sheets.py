@@ -1,4 +1,5 @@
 from google.appengine.api import memcache
+from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 from googleapiclient import discovery
 from oauth2client.contrib import appengine
@@ -14,6 +15,8 @@ SCOPE = 'https://www.googleapis.com/auth/drive'
 EDIT_URL = 'https://docs.google.com/spreadsheets/d/{}'
 
 discovery.logger.setLevel(logging.WARNING)
+
+urlfetch.set_default_fetch_deadline(60)
 
 
 class Settings(ndb.Model):
