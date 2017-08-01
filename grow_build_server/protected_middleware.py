@@ -17,6 +17,13 @@ class ProtectedMiddleware(object):
     def __init__(self, app, config):
         self.app = app
         self.protected_paths = config.get('protected_paths', [])
+        self.sign_in_path = config.get('access_requests', {}).get('request_access_path')
+
+    def redirect(self, url, start_response):
+        status = '302 Found'
+        response_headers = [('Location', url)]
+        start_response(status, response_headers)
+        return []
 
     def __call__(self, environ, start_response):
         if not self.protected_paths:
@@ -28,8 +35,21 @@ class ProtectedMiddleware(object):
                 is_protected = True
         if not is_protected:
             return self.app(environ, start_response)
+
         user = users.User.get_from_environ()
+        # User is unauthorized.
+        if user is None:
+            if self.sign_in_path:
+                url = '{}?next={}'.format(self.sign_in_path, path_from_url)
+                return self.redirect(url, start_response)
+            else:
+                status = '401 Unauthorized'
+                response_headers = []
+                start_response(status, response_headers)
+                return []
+
         protected_sheet = get_protected_sheet()
+        # User is forbidden.
         if user.can_read(protected_sheet, None):
             return self.app(environ, start_response)
         status = '403 Forbidden'

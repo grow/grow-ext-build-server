@@ -73,14 +73,17 @@ def send_email_to_new_user(email, email_config):
 
 
 def send_email_to_admins(req, email_config):
-    # Clean req.
+    # Normalize encoding for rendering email template.
     clean_form = {}
     for key, val in req['form'].iteritems():
-        if isinstance(val, unicode:)
+        if isinstance(val, unicode):
             val = val.encode('utf-8')
-        clean_form[key] = val
+        clean_form[key] = val.decode('utf-8')
     req['form'] = clean_form
     admin_emails = get_admins(notify_only=True)
+    if not admin_emails:
+        logging.error('No admins to email.')
+        return
     emailer_ent = emailer.Emailer()
     emailer_ent.send(
         to=admin_emails,
@@ -88,7 +91,7 @@ def send_email_to_admins(req, email_config):
             email_config['title'], req['email']),
         template_path='email_to_admins.html',
         kwargs={'req': req, 'email_config': email_config})
-    logging.info('Emailed admin -> {}'.format(email))
+    logging.info('Emailed admins -> {}'.format(', '.join(admin_emails)))
 
 
 def add_user_to_acl(new_user_email):
