@@ -44,6 +44,7 @@ backend = webapp2.WSGIApplication([
     access_requests.FormResponseHandler.mapping(),
     ('/_grow/access-requests/approve/(.*)', access_requests.ApproveAccessRequestHandler),
     ('/_grow/access-requests/process', access_requests.ProcessHandler),
+    ('/_grow/access-requests', access_requests.ManageAccessHandler),
     ('/_grow/search/index', search_app.IndexHandler),
     ('/_ah/warmup', search_app.IndexHandler),
 ], config=build_server_config)

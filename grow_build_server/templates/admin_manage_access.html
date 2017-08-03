@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block main %}
+  <form id="form">
+    <div class="main__card">
+      <div class="main__card__title">
+        {{email_config.title}}
+      </div>
+      <div class="main__card__description">
+        Enter a user's email address below to grant access to the website. An
+        email notification will be sent to the user once they have been added.
+      </div>
+      <div class="main__card__body">
+        <div>
+          <i class="material-icons">person_add</i>
+        </div>
+        <div>
+          <input type="email" placeholder="user@example.com" id="email">
+        </div>
+      </div>
+      <div class="main__card__cta">
+        <button type="submit" class="button">Add user</button>
+      </div>
+    </div>
+  </form>
+  <script>
+    var formEl = document.getElementById('form');
+    formEl.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = document.getElementById('email').value;
+      window.location = '/_grow/access-requests/approve/' + email;
+    });
+  </script>
+{% endblock %}

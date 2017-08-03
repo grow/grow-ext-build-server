@@ -29,8 +29,9 @@
   }
 
   .main__card__body > div:first-child {
-    color: #43A047;
     padding-right: 30px;
+    display: flex;
+    justify-content: center;
   }
 
   .main__card__body > div:first-child i {
@@ -44,11 +45,19 @@
     margin-bottom: 20px;
   }
 
+  .main__card__description {
+    margin-bottom: 20px;
+  }
+
   .main__card__cta {
     margin-top: 30px;
   }
 
   .button {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    cursor: pointer;
     background-color: #4D90FE;
     border-radius: 2px;
     color: #fff;
@@ -59,24 +68,20 @@
     text-decoration: none;
     text-transform: uppercase;
   }
+
+  input[type=email],
+  input[type=text] {
+    border: 1px solid #999;
+    font-family: 'Roboto', 'arial', 'helvetica neue', sans-serif;
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .material-icons--success {
+    color: #43A047;
+  }
 </style>
 <body>
   <div class="main">
-    <div class="main__card">
-      <div class="main__card__title">
-        {{email_config.title}}
-      </div>
-      <div class="main__card__body">
-        <div>
-          <i class="material-icons">check_circle</i>
-        </div>
-        <div>
-          <p>The access request for <b>{{email}}</b> was approved and an email notification was sent.</p>
-          <p>You may now close this window.</p>
-        </div>
-      </div>
-      <div class="main__card__cta">
-        <a class="button" href="{{spreadsheet_url}}">Open users spreadsheet</a>
-      </div>
-    </div>
+    {% block main %}{% endblock %}
   </div>

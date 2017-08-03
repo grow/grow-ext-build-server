@@ -133,7 +133,7 @@ class ApproveAccessRequestHandler(webapp2.RequestHandler):
         email_config = self.app.config['access_requests']['emails']
         add_user_to_acl(new_user_email)
         send_email_to_new_user(new_user_email, email_config)
-        template = jinja2_env().get_template('base.html')
+        template = jinja2_env().get_template('admin_access_request_approved.html')
         html = template.render({
             'email': new_user_email,
             'email_config': email_config,
@@ -142,13 +142,30 @@ class ApproveAccessRequestHandler(webapp2.RequestHandler):
         self.response.out.write(html)
 
 
-class ProcessHandler(webapp2.RequestHandler):
-
-    def get(self):
-        process_access_requests(self.app.config)
-
-
 class FormResponseHandler(mail_handlers.InboundMailHandler):
 
     def receive(self, message):
         process_access_requests()
+
+
+class ManageAccessHandler(webapp2.RequestHandler):
+
+    def get(self):
+        admins = get_admins()
+        user = users.get_current_user()
+        # Only admins can approve access.
+        if user.email() not in admins:
+            webapp2.abort(403)
+            return
+        template = jinja2_env().get_template('admin_manage_access.html')
+        email_config = self.app.config['access_requests']['emails']
+        html = template.render({
+            'email_config': email_config,
+        })
+        self.response.out.write(html)
+
+
+class ProcessHandler(webapp2.RequestHandler):
+
+    def get(self):
+        process_access_requests(self.app.config)

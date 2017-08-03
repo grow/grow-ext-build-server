@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block main %}
+  <div class="main__card">
+    <div class="main__card__title">
+      {{email_config.title}}
+    </div>
+    <div class="main__card__body">
+      <div>
+        <i class="material-icons material-icons--success">check_circle</i>
+      </div>
+      <div>
+        <p>The access request for <b>{{email}}</b> was approved and an email notification was sent.</p>
+        <p>You may now close this window.</p>
+      </div>
+    </div>
+    <div class="main__card__cta">
+      <a class="button" href="{{spreadsheet_url}}">Open users spreadsheet</a>
+    </div>
+  </div>
+{% endblock %}
