@@ -124,6 +124,11 @@ class ApproveAccessRequestHandler(webapp2.RequestHandler):
     def get(self, new_user_email):
         admins = get_admins()
         user = users.get_current_user()
+        if not user:
+            url = self.app.config['access_requests']['sign_in_path']
+            url += '?next={}'.format(os.getenv('PATH_INFO'))
+            self.redirect(url)
+            return
         # Only admins can approve access.
         if user.email() not in admins:
             webapp2.abort(403)
@@ -153,6 +158,11 @@ class ManageAccessHandler(webapp2.RequestHandler):
     def get(self):
         admins = get_admins()
         user = users.get_current_user()
+        if not user:
+            url = self.app.config['access_requests']['sign_in_path']
+            url += '?next={}'.format(os.getenv('PATH_INFO'))
+            self.redirect(url)
+            return
         # Only admins can approve access.
         if user.email() not in admins:
             webapp2.abort(403)
