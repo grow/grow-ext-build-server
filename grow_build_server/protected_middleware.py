@@ -1,8 +1,15 @@
+from google.appengine.ext import ndb
 import google_sheets
 import mimetypes
 import os
 import re
 import users
+
+
+class ProtectedPath(ndb.Model):
+    path = ndb.StringProperty()
+    sheet_id = ndb.StringProperty()
+    sheet_gid = ndb.StringProperty()
 
 
 def get_protected_sheet():
@@ -48,6 +55,7 @@ class ProtectedMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
+        # TODO: Multiple sheets.
         protected_sheet = get_protected_sheet()
         # User is forbidden.
         if user.can_read(protected_sheet, None):
