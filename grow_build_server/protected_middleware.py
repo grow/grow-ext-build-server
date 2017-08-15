@@ -12,13 +12,6 @@ class ProtectedPath(ndb.Model):
     sheet_gid = ndb.StringProperty()
 
 
-def get_protected_sheet():
-    settings = google_sheets.Settings.instance()
-    sheet_id = settings.sheet_id
-    sheet_gid_protected = settings.sheet_gid_protected
-    return google_sheets.get_sheet(sheet_id, gid=sheet_gid_protected)
-
-
 class ProtectedMiddleware(object):
 
     def __init__(self, app, config):
@@ -37,8 +30,14 @@ class ProtectedMiddleware(object):
             return self.app(environ, start_response)
         path_from_url = environ['PATH_INFO']
         is_protected = False
-        for path_regex in self.protected_paths:
+        sheet_id = None
+        sheet_gid = None
+        # TODO: Move configuration to UI.
+        for item in self.protected_paths:
+            path_regex = item['regex']
             if re.match(path_regex, path_from_url):
+                sheet_id = item['sheet_id']
+                sheet_gid = item['sheet_gid']
                 is_protected = True
         if not is_protected:
             return self.app(environ, start_response)
@@ -55,8 +54,7 @@ class ProtectedMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
-        # TODO: Multiple sheets.
-        protected_sheet = get_protected_sheet()
+        protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         # User is forbidden.
         if user.can_read(protected_sheet, None):
             return self.app(environ, start_response)
