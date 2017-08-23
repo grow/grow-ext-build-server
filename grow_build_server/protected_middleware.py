@@ -29,16 +29,9 @@ class ProtectedMiddleware(object):
         if not self.protected_paths:
             return self.app(environ, start_response)
         path_from_url = environ['PATH_INFO']
-        is_protected = False
-        sheet_id = None
-        sheet_gid = None
-        # TODO: Move configuration to UI.
-        for item in self.protected_paths:
-            path_regex = item['regex']
-            if re.match(path_regex, path_from_url):
-                sheet_id = item['sheet_id']
-                sheet_gid = item['sheet_gid']
-                is_protected = True
+        sheet_id, sheet_gid, is_protected = \
+                users.get_protected_information(
+                        self.protected_paths, path_from_url)
         if not is_protected:
             return self.app(environ, start_response)
 

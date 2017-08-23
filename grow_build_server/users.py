@@ -1,11 +1,13 @@
 from protorpc import messages
 from protorpc import remote
 import Cookie
+import config as config_lib
 import google.auth.transport.requests
 import google.oauth2.id_token
 import google_sheets
 import logging
 import os
+import re
 
 HTTP_REQUEST = google.auth.transport.requests.Request()
 COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
@@ -68,7 +70,13 @@ class UsersService(remote.Service):
 
     @remote.method(CanReadRequest, CanReadResponse)
     def can_read(self, request):
-        protected_sheet = get_protected_sheet()  # TODO: Multiple sheets.
+        config = config_lib.instance()
+        protected_paths = config.get('protected_paths', [])
+        sheet_id, sheet_gid, is_protected = \
+                get_protected_information(
+                        protected_paths, request.path)
+        protected_sheet = \
+                google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         user = User.get_from_environ()
         if not user:
             can_read = False
@@ -77,3 +85,17 @@ class UsersService(remote.Service):
         resp = CanReadResponse()
         resp.can_read = can_read
         return resp
+
+
+def get_protected_information(protected_paths, path_from_url):
+    is_protected = False
+    sheet_id = None
+    sheet_gid = None
+    # TODO: Move configuration to UI.
+    for item in protected_paths:
+        path_regex = item['regex']
+        if re.match(path_regex, path_from_url):
+            sheet_id = item['sheet_id']
+            sheet_gid = item['sheet_gid']
+            is_protected = True
+    return sheet_id, sheet_gid, is_protected

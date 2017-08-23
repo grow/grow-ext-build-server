@@ -3,6 +3,7 @@ from static_file_server_app import StaticFileServerApplication
 from sheets_auth_middleware import SheetsAuthMiddleware
 from protected_middleware import ProtectedMiddleware
 from protorpc.wsgi import service
+import config as config
 import access_requests
 import cors
 import logging
@@ -12,34 +13,7 @@ import users
 import webapp2
 import yaml
 
-DEFAULT_DIR = os.getenv('GROW_BUILD_DIR', 'build')
-
-# Get default locales from podspec, if it exists.
-podspec_path = os.path.join(os.path.dirname(__file__), '..', '..', 'podspec.yaml')
-podspec_path = os.path.abspath(podspec_path)
-if not os.path.exists(podspec_path):
-    locales = []
-    default_locale = None
-    build_server_config = {}
-    static_paths = []
-else:
-    podspec = yaml.load(open(podspec_path))
-    locales = podspec.get('localization', {}).get('locales', [])
-    default_locale = podspec.get('localization', {}).get('default_locale')
-    build_server_config = podspec.get('build_server', {})
-    static_paths = []
-    for static_dir in podspec.get('static_dirs', []):
-        static_paths.append(static_dir['serve_at'])
-
-logging.info('Using locales -> {}'.format(', '.join(locales)))
-logging.info('Using default locale -> {}'.format(default_locale))
-
-# Set build root.
-root = os.path.join(os.path.dirname(__file__), '..', '..', DEFAULT_DIR)
-root = os.path.abspath(root)
-
-build_server_config['root'] = root
-build_server_config['locales'] = locales
+build_server_config = config.instance()
 
 backend = webapp2.WSGIApplication([
     access_requests.FormResponseHandler.mapping(),
@@ -49,6 +23,11 @@ backend = webapp2.WSGIApplication([
     ('/_grow/search/index', search_app.IndexHandler),
     ('/_ah/warmup', search_app.IndexHandler),
 ], config=build_server_config)
+
+root = build_server_config['root']
+locales = build_server_config['locales']
+default_locale = build_server_config['default_locale']
+static_paths = build_server_config['static_paths']
 
 _static_app = StaticFileServerApplication(root=root)
 _locale_app = LocaleRedirectMiddleware(
