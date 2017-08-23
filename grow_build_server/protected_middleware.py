@@ -47,11 +47,14 @@ class ProtectedMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
+        import logging
+        logging.info('Using sheet id -> {}'.format(sheet_id))
+        logging.info('Using sheet gid -> {}'.format(sheet_gid))
         protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         # User is forbidden.
         if user.can_read(protected_sheet, None):
             return self.app(environ, start_response)
         status = '403 Forbidden'
-        response_headers = []
+        response_headers = [('X-Reason', 'No folder-level access.')]
         start_response(status, response_headers)
         return []

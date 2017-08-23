@@ -13,13 +13,6 @@ HTTP_REQUEST = google.auth.transport.requests.Request()
 COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
 
 
-def get_protected_sheet():
-    settings = google_sheets.Settings.instance()
-    sheet_id = settings.sheet_id
-    sheet_gid_protected = settings.sheet_gid_protected
-    return google_sheets.get_sheet(sheet_id, gid=sheet_gid_protected)
-
-
 class User(object):
 
     def __init__(self, data):
@@ -75,6 +68,7 @@ class UsersService(remote.Service):
         sheet_id, sheet_gid, is_protected = \
                 get_protected_information(
                         protected_paths, request.path)
+        logging.info('Mapped sheet -> {}:{}'.format(sheet_id, sheet_gid))
         protected_sheet = \
                 google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         user = User.get_from_environ()
@@ -88,14 +82,11 @@ class UsersService(remote.Service):
 
 
 def get_protected_information(protected_paths, path_from_url):
-    is_protected = False
-    sheet_id = None
-    sheet_gid = None
     # TODO: Move configuration to UI.
     for item in protected_paths:
         path_regex = item['regex']
         if re.match(path_regex, path_from_url):
             sheet_id = item['sheet_id']
             sheet_gid = item['sheet_gid']
-            is_protected = True
-    return sheet_id, sheet_gid, is_protected
+            return sheet_id, sheet_gid, True
+    return (None, None, False)

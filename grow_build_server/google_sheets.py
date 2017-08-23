@@ -1,6 +1,7 @@
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
+from googleapiclient import errors
 from googleapiclient import discovery
 from oauth2client.contrib import appengine
 import cgi
@@ -8,11 +9,19 @@ import csv
 import httplib2
 import io
 import logging
+import time
+import random
 import os
 
 RELOAD_ACL_QUERY_PARAM = 'grow-reload-acl'
 SCOPE = 'https://www.googleapis.com/auth/drive'
 EDIT_URL = 'https://docs.google.com/spreadsheets/d/{}'
+RETRY_ERRORS = [
+    'backendError',
+    'internalServerError',
+    'quotaExceeded',
+    'userRateLimitExceeded',
+]
 
 discovery.logger.setLevel(logging.WARNING)
 
@@ -48,6 +57,17 @@ def create_service(api='drive', version='v2'):
     return discovery.build(api, version, http=http)
 
 
+def _request_with_backoff(service, url):
+    for n in range(0, 10):
+        try:
+            return service._http.request(url)
+        except errors.HttpError as error:
+            if error.resp.reason in RETRY_ERRORS:
+                time.sleep((2 ** n) + random.random())
+                continue
+            raise
+
+
 def _request_sheet_content(sheet_id, gid=None):
     service = create_service()
     logging.info('Loading ACL -> {}'.format(sheet_id))
@@ -59,10 +79,10 @@ def _request_sheet_content(sheet_id, gid=None):
             continue
         if gid is not None:
             url += '&gid={}'.format(gid)
-        resp, content = service._http.request(url)
+        resp, content = _request_with_backoff(service, url)
         if resp.status != 200:
-            text = 'Error {} downloading sheet: {}'
-            text = text.format(resp.status, sheet_id)
+            text = 'Error {} downloading sheet: {}:{}'
+            text = text.format(resp.status, sheet_id, gid)
             raise Exception(text)
         return content
 
@@ -71,6 +91,7 @@ def get_sheet(sheet_id, gid=None):
     query_dict = get_query_dict()
     permit_cache = RELOAD_ACL_QUERY_PARAM not in query_dict
     cache_key = 'google_sheet:{}:{}'.format(sheet_id, gid)
+    logging.info('Loading Google Sheet -> {}'.format(cache_key))
     result = memcache.get(cache_key)
     if result is None or not permit_cache:
         content = _request_sheet_content(sheet_id, gid=gid)
@@ -79,7 +100,8 @@ def get_sheet(sheet_id, gid=None):
         fp.seek(0)
         reader = csv.DictReader(fp)
         result = [row for row in reader]
-        memcache.set(cache_key, result, 60)
+        logging.info('Saving Google Sheet in cache -> {}'.format(cache_key))
+        memcache.set(cache_key, result, 60 * 5)
     return result
 
 

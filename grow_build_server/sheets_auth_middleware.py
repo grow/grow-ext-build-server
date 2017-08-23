@@ -70,7 +70,7 @@ class SheetsAuthMiddleware(object):
                 return self.redirect(url, start_response)
             else:
                 status = '403 Forbidden'
-                response_headers = []
+                response_headers = [('X-Reason', 'No site-level access.')]
                 start_response(status, response_headers)
                 return []
 
