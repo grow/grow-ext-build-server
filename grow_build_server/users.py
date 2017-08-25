@@ -13,6 +13,17 @@ HTTP_REQUEST = google.auth.transport.requests.Request()
 COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
 
 
+def get_protected_information(protected_paths, path_from_url):
+    # TODO: Move configuration to UI.
+    for item in protected_paths:
+        path_regex = item['regex']
+        if re.match(path_regex, path_from_url):
+            sheet_id = item['sheet_id']
+            sheet_gid = item['sheet_gid']
+            return sheet_id, sheet_gid, True
+    return (None, None, False)
+
+
 class User(object):
 
     def __init__(self, data):
@@ -50,6 +61,25 @@ class User(object):
                 return True
         return False
 
+    def to_message(self):
+        message = UserMessage()
+        message.email = self.email
+        message.domain = self.domain
+        return message
+
+
+class UserMessage(messages.Message):
+    email = messages.StringField(1)
+    domain = messages.StringField(2)
+
+
+class MeRequest(messages.Message):
+    pass
+
+
+class MeResponse(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
 
 class CanReadRequest(messages.Message):
     path = messages.StringField(1)
@@ -68,25 +98,18 @@ class UsersService(remote.Service):
         sheet_id, sheet_gid, is_protected = \
                 get_protected_information(
                         protected_paths, request.path)
-        logging.info('Mapped sheet -> {}:{}'.format(sheet_id, sheet_gid))
         protected_sheet = \
                 google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         user = User.get_from_environ()
-        if not user:
-            can_read = False
-        else:
-            can_read = user.can_read(protected_sheet, request.path)
+        can_read = user and user.can_read(protected_sheet, request.path)
         resp = CanReadResponse()
         resp.can_read = can_read
         return resp
 
-
-def get_protected_information(protected_paths, path_from_url):
-    # TODO: Move configuration to UI.
-    for item in protected_paths:
-        path_regex = item['regex']
-        if re.match(path_regex, path_from_url):
-            sheet_id = item['sheet_id']
-            sheet_gid = item['sheet_gid']
-            return sheet_id, sheet_gid, True
-    return (None, None, False)
+    @remote.method(MeRequest, MeResponse)
+    def me(self, request):
+        user = User.get_from_environ()
+        resp = MeResponse()
+        if user:
+            resp.user = user.to_message()
+        return resp

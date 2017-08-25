@@ -1,9 +1,11 @@
 from google.appengine.ext import ndb
 import google_sheets
+import logging
 import mimetypes
 import os
 import re
 import users
+import webapp2
 
 
 class ProtectedPath(ndb.Model):
@@ -47,14 +49,27 @@ class ProtectedMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
-        import logging
-        logging.info('Using sheet id -> {}'.format(sheet_id))
-        logging.info('Using sheet gid -> {}'.format(sheet_gid))
         protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
-        # User is forbidden.
         if user.can_read(protected_sheet, None):
             return self.app(environ, start_response)
+        # User is forbidden.
+        logging.info('Using sheet id -> {}'.format(sheet_id))
+        logging.info('Using sheet gid -> {}'.format(sheet_gid))
         status = '403 Forbidden'
         response_headers = [('X-Reason', 'No folder-level access.')]
         start_response(status, response_headers)
         return []
+
+
+class CacheSheetsHandler(webapp2.RequestHandler):
+
+    def get(self):
+        protected_paths = self.app.config.get('protected_paths', [])
+        for path in protected_paths:
+            sheet_id = path['sheet_id']
+            sheet_gid = path['sheet_id']
+            try:
+                google_sheets.get_sheet(sheet_id, gid=sheet_gid)
+                logging.info('Caching Google Sheet -> {}:{}'.format(sheet_id, sheet_gid))
+            except google_sheets.Error as error:
+                logging.error('Error caching sheet -> {}'.format(str(error)))

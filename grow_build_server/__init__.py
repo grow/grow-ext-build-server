@@ -1,12 +1,12 @@
 from locale_redirect_middleware import LocaleRedirectMiddleware
 from static_file_server_app import StaticFileServerApplication
 from sheets_auth_middleware import SheetsAuthMiddleware
-from protected_middleware import ProtectedMiddleware
 from protorpc.wsgi import service
 import config as config
 import access_requests
 import cors
 import logging
+import protected_middleware
 import os
 import search_app
 import users
@@ -20,6 +20,7 @@ backend = webapp2.WSGIApplication([
     ('/_grow/access-requests/approve/(.*)', access_requests.ApproveAccessRequestHandler),
     ('/_grow/access-requests/process', access_requests.ProcessHandler),
     ('/_grow/access-requests', access_requests.ManageAccessHandler),
+    ('/_grow/protected/cache-sheets', protected_middleware.CacheSheetsHandler),
     ('/_grow/search/index', search_app.IndexHandler),
     ('/_ah/warmup', search_app.IndexHandler),
 ], config=build_server_config)
@@ -36,7 +37,7 @@ _locale_app = LocaleRedirectMiddleware(
 _sheets_auth_app = SheetsAuthMiddleware(
         _locale_app, static_paths=static_paths,
         config=build_server_config)
-app = ProtectedMiddleware(_sheets_auth_app, config=build_server_config)
+app = protected_middleware.ProtectedMiddleware(_sheets_auth_app, config=build_server_config)
 
 api = cors.CorsMiddleware(service.service_mappings([
     ('/_grow/api/users.*', users.UsersService),

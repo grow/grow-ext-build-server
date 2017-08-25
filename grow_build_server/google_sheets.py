@@ -28,6 +28,10 @@ discovery.logger.setLevel(logging.WARNING)
 urlfetch.set_default_fetch_deadline(60)
 
 
+class Error(Exception):
+    pass
+
+
 class Settings(ndb.Model):
     sheet_id = ndb.StringProperty()
     sheet_gid_global = ndb.StringProperty()
@@ -73,7 +77,7 @@ def _request_sheet_content(sheet_id, gid=None):
     logging.info('Loading ACL -> {}'.format(sheet_id))
     resp = service.files().get(fileId=sheet_id).execute()
     if 'exportLinks' not in resp:
-        raise Exception('Nothing to export: {}'.format(sheet_id))
+        raise Error('Nothing to export: {}'.format(sheet_id))
     for mimetype, url in resp['exportLinks'].iteritems():
         if not mimetype.endswith('csv'):
             continue
@@ -83,7 +87,7 @@ def _request_sheet_content(sheet_id, gid=None):
         if resp.status != 200:
             text = 'Error {} downloading sheet: {}:{}'
             text = text.format(resp.status, sheet_id, gid)
-            raise Exception(text)
+            raise Error(text)
         return content
 
 
