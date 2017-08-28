@@ -67,9 +67,11 @@ class CacheSheetsHandler(webapp2.RequestHandler):
         protected_paths = self.app.config.get('protected_paths', [])
         for path in protected_paths:
             sheet_id = path['sheet_id']
-            sheet_gid = path['sheet_id']
+            sheet_gid = path['sheet_gid']
             try:
                 google_sheets.get_sheet(sheet_id, gid=sheet_gid)
-                logging.info('Caching Google Sheet -> {}:{}'.format(sheet_id, sheet_gid))
+                logging.info('Successfully cached Google Sheet -> {}:{}'.format(sheet_id, sheet_gid))
+                self.response.out.write('Cached -> {}:{}\n'.format(sheet_id, sheet_gid))
             except google_sheets.Error as error:
-                logging.error('Error caching sheet -> {}'.format(str(error)))
+                logging.error('Failed to cache sheet -> {}'.format(str(error)))
+                self.response.out.write('Failed -> {}:{}\n'.format(sheet_id, sheet_gid))

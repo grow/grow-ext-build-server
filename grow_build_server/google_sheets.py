@@ -62,20 +62,29 @@ def create_service(api='drive', version='v2'):
 
 
 def _request_with_backoff(service, url):
-    for n in range(0, 10):
-        try:
-            return service._http.request(url)
-        except errors.HttpError as error:
-            if error.resp.reason in RETRY_ERRORS:
-                time.sleep((2 ** n) + random.random())
-                continue
-            raise
+    for n in range(0, 5):
+        resp, content = service._http.request(url)
+        if resp.status in [429]:
+            logging.info('Attempt {} for {}'.format(n, url))
+            logging.info(resp)
+            time.sleep((2 ** (n + 1)) + random.random())
+            continue
+        return resp, content
+    raise Error('Error {} {} downloading sheet: {}'.format(resp.status, resp.reason, url))
 
 
 def _request_sheet_content(sheet_id, gid=None):
     service = create_service()
     logging.info('Loading ACL -> {}'.format(sheet_id))
-    resp = service.files().get(fileId=sheet_id).execute()
+    for n in range(0, 5):
+        try:
+            resp = service.files().get(fileId=sheet_id).execute()
+        except errors.HttpError as error:
+            if error.resp.reason in RETRY_ERRORS:
+                logging.info('Attempt {} for {}'.format(n, url))
+                time.sleep((2 ** (n + 1)) + random.random())
+                continue
+            raise
     if 'exportLinks' not in resp:
         raise Error('Nothing to export: {}'.format(sheet_id))
     for mimetype, url in resp['exportLinks'].iteritems():
