@@ -100,9 +100,9 @@ def _request_sheet_content(sheet_id, gid=None):
         return content
 
 
-def get_sheet(sheet_id, gid=None):
+def get_sheet(sheet_id, gid=None, use_cache=True):
     query_dict = get_query_dict()
-    permit_cache = RELOAD_ACL_QUERY_PARAM not in query_dict
+    permit_cache = RELOAD_ACL_QUERY_PARAM not in query_dict or not use_cache
     cache_key = 'google_sheet:{}:{}'.format(sheet_id, gid)
     logging.info('Loading Google Sheet -> {}'.format(cache_key))
     result = memcache.get(cache_key)

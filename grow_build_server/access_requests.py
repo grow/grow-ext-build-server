@@ -58,6 +58,11 @@ def process_access_requests(config):
                 email_config=config['access_requests']['emails'])
         if req['form']['Timestamp'] and req['email']:
             SeenAccessRequest.save(req['form']['Timestamp'], req['email'])
+    # Reset cache.
+    google_sheets.get_sheet(
+            access_request_sheet_id,
+            gid=access_request_gid,
+            use_cache=False)
 
 
 def send_email_to_new_user(email, email_config):
