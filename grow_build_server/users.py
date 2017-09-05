@@ -54,7 +54,10 @@ class User(object):
             else:
                 logging.exception('Problem with Firebase token.')
 
-    def can_read(self, sheet, path):
+    def can_admin(self, sheet):
+        return self.can_read(sheet)
+
+    def can_read(self, sheet, path=None):
         for row in sheet:
             if self.email.lower() == row.get('email', '').lower().strip() \
                     or self.domain == row.get('domain', '').lower().strip():
@@ -89,7 +92,28 @@ class CanReadResponse(messages.Message):
     can_read = messages.BooleanField(1)
 
 
+class CanAdminRequest(messages.Message):
+    pass
+
+
+class CanAdminResponse(messages.Message):
+    can_admin = messages.BooleanField(1)
+
+
 class UsersService(remote.Service):
+
+    @remote.method(CanAdminRequest, CanAdminResponse)
+    def can_admin(self, request):
+        instance = google_sheets.Settings.instance()
+        sheet_id = instance.sheet_id
+        sheet_gid_admins = instance.sheet_gid_admins
+        protected_sheet = \
+                google_sheets.get_sheet(sheet_id, gid=sheet_gid_admins)
+        user = User.get_from_environ()
+        can_admin = user and user.can_admin(protected_sheet)
+        resp = CanAdminResponse()
+        resp.can_admin = can_admin
+        return resp
 
     @remote.method(CanReadRequest, CanReadResponse)
     def can_read(self, request):
