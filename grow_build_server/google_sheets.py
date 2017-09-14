@@ -187,5 +187,6 @@ def get_or_create_sheet_from_settings(title=None, emails=None):
         settings.sheet_id = sheet_id
         settings.put()
     sheet_id = settings.sheet_id
-    resp = get_sheet(sheet_id)
+    sheet_gid_global = settings.sheet_gid_global
+    resp = get_sheet(sheet_id, gid=sheet_gid_global)
     return resp
