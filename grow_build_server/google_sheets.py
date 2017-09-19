@@ -36,7 +36,6 @@ class Settings(ndb.Model):
     sheet_id = ndb.StringProperty()
     sheet_gid_global = ndb.StringProperty()
     sheet_gid_admins = ndb.StringProperty()
-    sheet_gid_protected = ndb.StringProperty()
 
     @classmethod
     def instance(cls):
