@@ -69,7 +69,7 @@ class CacheSheetsHandler(webapp2.RequestHandler):
             sheet_id = path['sheet_id']
             sheet_gid = path['sheet_gid']
             try:
-                google_sheets.get_sheet(sheet_id, gid=sheet_gid)
+                google_sheets.get_sheet(sheet_id, gid=sheet_gid, use_cache=False)
                 logging.info('Successfully cached Google Sheet -> {}:{}'.format(sheet_id, sheet_gid))
                 self.response.out.write('Cached -> {}:{}\n'.format(sheet_id, sheet_gid))
             except google_sheets.Error as error:

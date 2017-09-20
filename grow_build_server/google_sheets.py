@@ -113,7 +113,7 @@ def get_sheet(sheet_id, gid=None, use_cache=True):
         reader = csv.DictReader(fp)
         result = [row for row in reader]
         logging.info('Saving Google Sheet in cache -> {}'.format(cache_key))
-        memcache.set(cache_key, result, 60 * 5)
+        memcache.set(cache_key, result)
     return result
 
 
