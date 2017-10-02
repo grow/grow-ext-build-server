@@ -33,6 +33,11 @@ def get_access_requests(access_request_sheet_id, access_request_gid):
     new_user_access_requests = []
     for row in requests:
         email = row['Email address']
+        # Sometimes emails are misformatted as a list. Reduce the list to the
+        # first email address.
+        if ',' in email:
+            email = email.split(',')[0]
+        email = email.strip()
         seen_access_request = \
                 SeenAccessRequest.get(row['Timestamp'], email)
         if seen_access_request is None:
