@@ -34,6 +34,7 @@ class ProtectedMiddleware(object):
         sheet_id, sheet_gid, is_protected = \
                 users.get_protected_information(
                         self.protected_paths, path_from_url)
+
         if not is_protected:
             return self.app(environ, start_response)
 
@@ -51,6 +52,11 @@ class ProtectedMiddleware(object):
 
         protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         if user.can_read(protected_sheet, None):
+            # If the user is on the register page and if they have access,
+            # redirect them to the homepage.
+            if path_from_url == self.sign_in_path:
+                self.redirect('/', start_response)
+                return []
             return self.app(environ, start_response)
         # User is forbidden.
         logging.info('Using sheet id -> {}'.format(sheet_id))
