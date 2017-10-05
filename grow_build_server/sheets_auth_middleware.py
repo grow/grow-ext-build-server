@@ -38,15 +38,22 @@ class SheetsAuthMiddleware(object):
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
 
+        user = users.User.get_from_environ()
+        sheet = google_sheets.get_or_create_sheet_from_settings(
+                title=self.title, emails=self.admins)
+
+        # If the user is on the register page and if they have access,
+        # redirect them to the homepage.
+        has_access = user and user.can_read(sheet, path)
+        if path in [self.sign_in_path, self.request_access_path] and has_access:
+            self.redirect('/', start_response)
+            return []
+
         # Static dirs are unprotected.
         if self.unprotected_paths:
             for dir_path in self.unprotected_paths:
                 if path.startswith(dir_path):
                     return self.app(environ, start_response)
-
-        user = users.User.get_from_environ()
-        sheet = google_sheets.get_or_create_sheet_from_settings(
-                title=self.title, emails=self.admins)
 
         if path == self.redirect_to_sheet_path:
             sheet_id = google_sheets.Settings.instance().sheet_id
@@ -64,7 +71,7 @@ class SheetsAuthMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
-        if not user.can_read(sheet, path):
+        if not has_access:
             if self.request_access_path:
                 url = self.request_access_path
                 return self.redirect(url, start_response)

@@ -34,10 +34,10 @@ _static_app = StaticFileServerApplication(root=root)
 _locale_app = LocaleRedirectMiddleware(
         _static_app, root=root, locales=locales,
         default_locale=default_locale)
-_sheets_auth_app = SheetsAuthMiddleware(
-        _locale_app, static_paths=static_paths,
+_protected_app = protected_middleware.ProtectedMiddleware(_locale_app, config=build_server_config)
+app = SheetsAuthMiddleware(
+        _protected_app, static_paths=static_paths,
         config=build_server_config)
-app = protected_middleware.ProtectedMiddleware(_sheets_auth_app, config=build_server_config)
 
 api = cors.CorsMiddleware(service.service_mappings([
     ('/_grow/api/users.*', users.UsersService),

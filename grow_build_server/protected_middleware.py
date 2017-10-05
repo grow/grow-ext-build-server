@@ -52,11 +52,6 @@ class ProtectedMiddleware(object):
 
         protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         if user.can_read(protected_sheet, None):
-            # If the user is on the register page and if they have access,
-            # redirect them to the homepage.
-            if path_from_url == self.sign_in_path:
-                self.redirect('/', start_response)
-                return []
             return self.app(environ, start_response)
         # User is forbidden.
         logging.info('Using sheet id -> {}'.format(sheet_id))
@@ -70,6 +65,7 @@ class ProtectedMiddleware(object):
 class CacheSheetsHandler(webapp2.RequestHandler):
 
     def get(self):
+        # Reload the protected folder access sheets.
         protected_paths = self.app.config.get('protected_paths', [])
         for path in protected_paths:
             sheet_id = path['sheet_id']
@@ -81,3 +77,7 @@ class CacheSheetsHandler(webapp2.RequestHandler):
             except google_sheets.Error as error:
                 logging.error('Failed to cache sheet -> {}'.format(str(error)))
                 self.response.out.write('Failed -> {}:{}\n'.format(sheet_id, sheet_gid))
+        # Reload the global access sheet.
+        acl_sheet_id = google_sheets.Settings.instance().sheet_id
+        acl_sheet_gid = google_sheets.Settings.instance().sheet_gid_global
+        google_sheets.get_sheet(acl_sheet_id, gid=acl_sheet_gid, use_cache=False)
