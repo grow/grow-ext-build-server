@@ -113,7 +113,7 @@ def get_admins(notify_only=False):
     instance = google_sheets.Settings.instance()
     sheet_id = instance.sheet_id
     admins_gid = instance.sheet_gid_admins
-    admins = google_sheets.get_sheet(sheet_id, gid=admins_gid)
+    admins = google_sheets.get_sheet(sheet_id, gid=admins_gid, use_cache=False)
     if notify_only:
         return [row.get('email') for row in admins if row.get('notify')]
     return [row.get('email') for row in admins]
