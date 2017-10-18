@@ -26,6 +26,7 @@ class QueryMessage(messages.Message):
     q = messages.StringField(1)
     limit = messages.IntegerField(2)
     cursor = messages.StringField(3)
+    language = messages.StringField(4)
 
 
 class SearchRequest(messages.Message):
@@ -59,6 +60,17 @@ def _parse_locale_from_path(doc_id, locales):
     part = part.lower()
     locales = [locale.lower() for locale in locales]
     if part in locales:
+        return part
+
+
+def _parse_language_from_path(doc_id, locales):
+    if not locales:
+        return
+    part = doc_id.lstrip('/')
+    part = part.split('/', 1)[0] if '/' in part else part
+    part = part.lower()
+    locales = [locale.lower() for locale in locales]
+    if part in locales:
         language = part.split('_')[0]
         if language == 'fil':
             language = 'tl'
@@ -73,7 +85,8 @@ def _get_fields_from_file(root, file_path, locales=None):
     soup = bs4.BeautifulSoup(html, 'lxml')
     fields = {}
     fields['doc_id'] = doc_id
-    fields['language'] = _parse_locale_from_path(doc_id, locales)
+    fields['language'] = _parse_language_from_path(doc_id, locales)
+    fields['locale'] = _parse_locale_from_path(doc_id, locales)
     # Max size, 500 is some buffer for the rest of the request.
     fields['html'] = html[:1048576-500]
     fields['title'] = soup.title.string.strip()
@@ -84,6 +97,9 @@ def create_searchable_doc(root, file_path, locales=None):
     parsed = _get_fields_from_file(root, file_path, locales=locales)
     try:
         fields = [
+            search.AtomField(
+                name='locale',
+                value=parsed['locale']),
             search.AtomField(
                 name='path',
                 value=parsed['doc_id'],
