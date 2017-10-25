@@ -5,6 +5,7 @@ from protorpc import messages
 from protorpc import remote
 from protorpc.wsgi import service
 import bs4
+import html2text
 import logging
 import os
 import webapp2
@@ -88,7 +89,7 @@ def _get_fields_from_file(root, file_path, locales=None):
     fields['language'] = _parse_language_from_path(doc_id, locales)
     fields['locale'] = _parse_locale_from_path(doc_id, locales)
     # Max size, 500 is some buffer for the rest of the request.
-    fields['html'] = html[:1048576-500]
+    fields['html'] = html2text.html2text(html)
     fields['title'] = soup.title.string.strip()
     return fields
 
