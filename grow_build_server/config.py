@@ -21,6 +21,10 @@ else:
     for static_dir in podspec.get('static_dirs', []):
         static_paths.append(static_dir['serve_at'])
 
+from google.appengine.ext import vendor
+extensions_dir = os.path.join(os.path.dirname(podspec_path), 'extensions')
+vendor.add('extensions')
+
 # Set build root.
 root = os.path.join(os.path.dirname(__file__), '..', '..', DEFAULT_DIR)
 root = os.path.abspath(root)

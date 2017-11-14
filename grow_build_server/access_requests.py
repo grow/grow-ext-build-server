@@ -1,6 +1,7 @@
-from google.appengine.api import users
+from google.appengine.api import users as api_users
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import mail_handlers
+import users
 import emailer
 import google_sheets
 import jinja2
@@ -129,7 +130,7 @@ class ApproveAccessRequestHandler(webapp2.RequestHandler):
 
     def get(self, new_user_email):
         admins = get_admins()
-        user = users.get_current_user()
+        user = api_users.get_current_user()
         if not user:
             url = self.app.config['access_requests']['sign_in_path']
             self.redirect(url)
@@ -161,20 +162,64 @@ class FormResponseHandler(mail_handlers.InboundMailHandler):
 class ManageAccessHandler(webapp2.RequestHandler):
 
     def get(self):
-        admins = get_admins()
-        user = users.get_current_user()
+        # TODO: Move to a decorator.
+        user = api_users.get_current_user()
         if not user:
-            url = self.app.config['access_requests']['sign_in_path']
+            url = api_users.create_login_url(self.request.path)
             self.redirect(url)
             return
-        # Only admins can approve access.
-        if user.email() not in admins:
+        is_admin = api_users.is_current_user_admin()
+        if not is_admin:
             webapp2.abort(403)
             return
+        # TODO: Move to a decorator (above).
         template = jinja2_env().get_template('admin_manage_access.html')
         email_config = self.app.config['access_requests']['emails']
         html = template.render({
+            'title': email_config.title,
             'email_config': email_config,
+        })
+        self.response.out.write(html)
+
+
+class ManageUserHandler(webapp2.RequestHandler):
+
+    def get(self, email):
+        # TODO: Move to a decorator.
+        user = api_users.get_current_user()
+        if not user:
+            url = api_users.create_login_url(self.request.path)
+            self.redirect(url)
+            return
+        is_admin = api_users.is_current_user_admin()
+        if not is_admin:
+            webapp2.abort(403)
+            return
+        # TODO: Move to a decorator (above).
+        template = jinja2_env().get_template('admin_manage_user.html')
+        user_to_edit = users.PersistentUser.get(email)
+        html = template.render({
+            'user': user_to_edit,
+        })
+        self.response.out.write(html)
+
+
+class ManageUsersHandler(webapp2.RequestHandler):
+
+    def get(self):
+        # TODO: Move to a decorator.
+        user = api_users.get_current_user()
+        if not user:
+            url = api_users.create_login_url(self.request.path)
+            self.redirect(url)
+            return
+        is_admin = api_users.is_current_user_admin()
+        if not is_admin:
+            webapp2.abort(403)
+            return
+        # TODO: Move to a decorator (above).
+        template = jinja2_env().get_template('admin_manage_users.html')
+        html = template.render({
         })
         self.response.out.write(html)
 

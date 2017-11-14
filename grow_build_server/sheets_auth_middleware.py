@@ -12,16 +12,17 @@ REDIRECT_TO_SHEETS_PATH = '/_grow/acl'
 
 class SheetsAuthMiddleware(object):
 
-    def __init__(self, app, config, static_paths):
+    def __init__(self, app, config, static_paths, unprotected_paths=None):
         self.app = app
-        self.errors = config['error_pages']
-        self.admins = config['admins']
-        self.request_access_path = config['access_requests']['sign_in_path']
-        self.sign_in_path = config['access_requests']['request_access_path']
-        self.title = config['title']
+        self.errors = config.get('error_pages', [])
+        self.admins = config.get('admins', [])
+        access_requests = config.get('access_requests', {})
+        self.request_access_path = access_requests.get('sign_in_path')
+        self.sign_in_path = access_requests.get('request_access_path')
+        self.title = config.get('title', 'Untitled Site')
         self.redirect_to_sheet_path = REDIRECT_TO_SHEETS_PATH
         self.static_paths = static_paths
-        self.unprotected_paths = []
+        self.unprotected_paths = unprotected_paths or []
         if self.static_paths:
             self.unprotected_paths += self.static_paths
         if self.request_access_path:
@@ -37,6 +38,11 @@ class SheetsAuthMiddleware(object):
 
     def __call__(self, environ, start_response):
         path = environ['PATH_INFO']
+        # Static dirs are unprotected.
+        if self.unprotected_paths:
+            for dir_path in self.unprotected_paths:
+                if path.startswith(dir_path):
+                    return self.app(environ, start_response)
 
         user = users.User.get_from_environ()
         sheet = google_sheets.get_or_create_sheet_from_settings(
@@ -48,12 +54,6 @@ class SheetsAuthMiddleware(object):
         if path in [self.sign_in_path, self.request_access_path] and has_access:
             self.redirect('/', start_response)
             return []
-
-        # Static dirs are unprotected.
-        if self.unprotected_paths:
-            for dir_path in self.unprotected_paths:
-                if path.startswith(dir_path):
-                    return self.app(environ, start_response)
 
         if path == self.redirect_to_sheet_path:
             sheet_id = google_sheets.Settings.instance().sheet_id

@@ -2,10 +2,14 @@ api_version: 1
 runtime: python27
 threadsafe: true
 
+libraries:
+- name: lxml
+  version: latest
+
 handlers:
+- url: /_grow/api/.*
+  script: extensions.grow_build_server.api
+- url: /_grow/.*
+  script: extensions.grow_build_server.backend
 - url: /.*
   script: extensions.grow_build_server.app
- 
-skip_files:
-- (?!(build|extensions|podspec.yaml).*)
-- ^extensions/(?!__init__\.py$|grow_build_server).*

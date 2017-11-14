@@ -1,8 +1,10 @@
+# Import first to fix paths.
+import config as config
+
 from locale_redirect_middleware import LocaleRedirectMiddleware
 from static_file_server_app import StaticFileServerApplication
 from sheets_auth_middleware import SheetsAuthMiddleware
 from protorpc.wsgi import service
-import config as config
 import access_requests
 import cors
 import logging
@@ -20,6 +22,8 @@ backend = webapp2.WSGIApplication([
     ('/_grow/access-requests/approve/(.*)', access_requests.ApproveAccessRequestHandler),
     ('/_grow/access-requests/process', access_requests.ProcessHandler),
     ('/_grow/access-requests', access_requests.ManageAccessHandler),
+    ('/_grow/users/(.*)', access_requests.ManageUserHandler),
+    ('/_grow/users', access_requests.ManageUsersHandler),
     ('/_grow/protected/cache-sheets', protected_middleware.CacheSheetsHandler),
     ('/_grow/search/index', search_app.IndexHandler),
     ('/_ah/warmup', search_app.IndexHandler),

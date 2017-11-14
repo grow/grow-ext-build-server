@@ -8,9 +8,12 @@ import google_sheets
 import logging
 import os
 import re
+from google.appengine.ext import ndb
+from google.appengine.datastore import datastore_query
 
 HTTP_REQUEST = google.auth.transport.requests.Request()
 COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
+REFRESH_COOKIE_NAME = os.getenv('FIREBASE_REFRESH_TOKEN_COOKIE', 'firebaseRefreshToken')
 
 
 def get_protected_information(protected_paths, path_from_url):
@@ -22,6 +25,63 @@ def get_protected_information(protected_paths, path_from_url):
             sheet_gid = item['sheet_gid']
             return sheet_id, sheet_gid, True
     return (None, None, False)
+
+
+def get_cookie_value(name):
+    cookie = Cookie.SimpleCookie(os.getenv('HTTP_COOKIE'))
+    morsel = cookie.get(name)
+    if not morsel:
+        return
+    return morsel.value
+
+
+class PersistentUser(ndb.Model):
+    email = ndb.StringProperty()
+    domain = ndb.StringProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
+    created_by = ndb.StringProperty()
+    folders = ndb.StringProperty(repeated=True)
+
+    def _pre_put_hook(self):
+        if self.email:
+            self.email = self.email.strip().lower()
+            self.domain = self.email.split('@')[-1]
+        if self.created_by:
+            self.created_by = self.created_by.strip().lower()
+        if self.folders:
+            self.folders = [folder.lower() for folder in self.folders]
+
+    @classmethod
+    def search(cls, cursor=None, limit=None):
+        limit = limit or 200
+        start_cursor = datastore_query.Cursor(urlsafe=cursor) if cursor else None
+        query = cls.query()
+        query = query.order(-cls.created)
+        results, next_cursor, has_more = query.fetch_page(limit, start_cursor=start_cursor)
+        return (results, next_cursor, has_more)
+
+    @classmethod
+    def normalize_email(cls, email):
+        return email.strip().lower()
+
+    @classmethod
+    def create(cls, email, created_by=None):
+        email = cls.normalize_email(email)
+        key = ndb.Key('PersistentUser', email)
+        user = cls(key=key)
+        user.email = email
+        user.created_by = created_by
+        user.put()
+        return user
+
+    @classmethod
+    def get(cls, email):
+        key = ndb.Key('PersistentUser', email)
+        return key.get()
+
+    def delete(self):
+        self.key.delete()
 
 
 class User(object):
@@ -38,12 +98,17 @@ class User(object):
         return self.email.split('@')[-1]
 
     @classmethod
-    def get_from_environ(cls):
-        cookie = Cookie.SimpleCookie(os.getenv('HTTP_COOKIE'))
-        morsel = cookie.get(COOKIE_NAME)
-        if not morsel:
+    def refresh_firebase_token(cls):
+        firebase_token = get_cookie_value(COOKIE_NAME)
+        refresh_token = get_cookie_value(REFRESH_COOKIE_NAME)
+        if not refresh_token or not firebase_token:
             return
-        firebase_token = morsel.value
+
+    @classmethod
+    def get_from_environ(cls):
+        firebase_token = get_cookie_value(COOKIE_NAME)
+        if not firebase_token:
+            return
         try:
             claims = google.oauth2.id_token.verify_firebase_token(
                             firebase_token, HTTP_REQUEST)
