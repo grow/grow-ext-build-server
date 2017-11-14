@@ -220,6 +220,7 @@ class ManageUsersHandler(webapp2.RequestHandler):
         # TODO: Move to a decorator (above).
         template = jinja2_env().get_template('admin_manage_users.html')
         html = template.render({
+            'folders': users.list_folder_messages(),
         })
         self.response.out.write(html)
 

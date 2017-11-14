@@ -1,5 +1,28 @@
 {% extends "base.html" %}
 
 {% block main %}
-{{user}}
+<div
+    ng-controller="ManageUserController as ctrl"
+    ng-init="ctrl.setEmail('{{user.email}}')">
+  <div class="main__card main__card--sm">
+    <div class="main__card__title">
+      [[ctrl.user.email]]
+    </div>
+  </div>
+  <div class="main__card">
+    <table class="table">
+      <thead class="table__head">
+        <tr class="table__row">
+          <td></td>
+          <td>Folder</td>
+        </tr>
+        {% for folder in folders %}
+        <tr>
+          <td><input type="checkbox"></td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </thead>
+  </div>
+</div>
 {% endblock %}

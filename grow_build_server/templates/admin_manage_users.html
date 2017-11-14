@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block main %}
-<div ng-controller="ManageUserController as ctrl">
+<div ng-controller="ManageUsersController as ctrl">
   <form
       class="form"
       ng-submit="ctrl.create(ctrl.user.email)">
@@ -19,9 +19,26 @@
       {% endfor %}
     </div>
     <div class="form__row">
-      <button type="submit">Add user</button>
+      <button type="submit" class="button">Add user</button>
     </div>
   </form>
-  [[ctrl.users]]
+
+  <div class="main__card">
+    <table class="table" ng-cloak>
+      <thead class="table__head">
+        <tr class="table__row">
+          <td>Email</td>
+          <td>Folders</td>
+          <td>Created</td>
+        </tr>
+      </thead>
+      <tr ng-repeat="user in ctrl.users" class="table__row">
+        <td class="table__row__cell"><a href="/_grow/users/[[user.email]]">[[user.email]]</a></td>
+        <td class="table__row__cell">[[user.num_folders]]</td>
+        <td class="table__row__cell">[[user.created]]</td>
+      </tr>
+    </table>
+  </div>
+
 </div>
 {% endblock %}

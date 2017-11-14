@@ -44,6 +44,7 @@ class PersistentUser(ndb.Model):
     modified = ndb.DateTimeProperty(auto_now=True)
     created_by = ndb.StringProperty()
     folders = ndb.StringProperty(repeated=True)
+    num_folders = ndb.IntegerProperty()
 
     def _pre_put_hook(self):
         if self.email:
@@ -53,14 +54,17 @@ class PersistentUser(ndb.Model):
             self.created_by = self.created_by.strip().lower()
         if self.folders:
             self.folders = [folder.lower() for folder in self.folders]
+            self.num_folders = len(self.folders)
 
     @classmethod
     def search(cls, cursor=None, limit=None):
         limit = limit or 200
-        start_cursor = datastore_query.Cursor(urlsafe=cursor) if cursor else None
+        start_cursor = datastore_query.Cursor(urlsafe=cursor) \
+                if cursor else None
         query = cls.query()
         query = query.order(-cls.created)
-        results, next_cursor, has_more = query.fetch_page(limit, start_cursor=start_cursor)
+        results, next_cursor, has_more = \
+                query.fetch_page(limit, start_cursor=start_cursor)
         return (results, next_cursor, has_more)
 
     @classmethod
@@ -87,8 +91,13 @@ class PersistentUser(ndb.Model):
 
     def to_message(self):
         message = UserMessage()
-        message.email = self.email
+        message.created_by = self.created_by
+        message.created = self.created
         message.domain = self.domain
+        message.email = self.email
+        # message.folders = self.folders
+        message.modified = self.modified
+        message.num_folders = self.num_folders
         return message
 
 
@@ -144,10 +153,23 @@ class User(object):
         return message
 
 
+def list_folder_messages():
+    pass
+
+
+class FolderMessage(messages.Message):
+    pass
+
+
 class UserMessage(messages.Message):
     email = messages.StringField(1)
     domain = messages.StringField(2)
     created = message_types.DateTimeField(3)
+    created_by = messages.StringField(4)
+    modified = message_types.DateTimeField(5)
+    modified_by = messages.StringField(6)
+    num_folders = messages.IntegerField(7)
+    folders = messages.MessageField(FolderMessage, 8, repeated=True)
 
 
 class MeRequest(messages.Message):
@@ -179,6 +201,14 @@ class DeleteUserRequest(messages.Message):
 
 
 class DeleteUserResponse(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class GetUserRequest(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class GetUserResponse(messages.Message):
     user = messages.MessageField(UserMessage, 1)
 
 
@@ -240,7 +270,9 @@ class UsersService(remote.Service):
 
     @remote.method(CreateUserRequest, CreateUserResponse)
     def create(self, request):
-        user = PersistentUser.create(request.user.email)
+        created_by = users.get_current_user().email
+        user = PersistentUser.create(
+                request.user.email, created_by=created_by)
         resp = CreateUserResponse()
         resp.user = user.to_message()
         return resp
@@ -261,4 +293,11 @@ class UsersService(remote.Service):
         resp.has_more = has_more
         if next_cursor:
             resp.next_cursor = next_cursor.urlsafe()
+        return resp
+
+    @remote.method(GetUserRequest, GetUserResponse)
+    def get(self, request):
+        user = PersistentUser.get(request.user.email)
+        resp = GetUserResponse()
+        resp.user = user.to_message() if user else None
         return resp

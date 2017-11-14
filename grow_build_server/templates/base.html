@@ -15,10 +15,6 @@
     font-family: 'Roboto', 'arial', 'helvetica neue', sans-serif;
     padding: 30px;
   }
-
-  .main {
-    max-width: 500px;
-  }
   
   .main__card {
     background: #fff;
@@ -27,6 +23,10 @@
     color: #333;
     line-height: 1.5em;
   }
+
+  .main__card--sm {
+    max-width: 600px;
+  } 
 
   .main__card__body {
     display: flex;
@@ -50,11 +50,19 @@
     margin-bottom: 20px;
   }
 
+  .main__card__title:last-child {
+    margin-bottom: none;
+  }
+
   .main__card__description {
     margin-bottom: 20px;
   }
 
   .main__card__cta {
+    margin-top: 30px;
+  }
+
+  .main__card + .main__card {
     margin-top: 30px;
   }
 
