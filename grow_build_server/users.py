@@ -190,6 +190,16 @@ class CreateUserResponse(messages.Message):
     user = messages.MessageField(UserMessage, 1)
 
 
+class SearchUsersRequest(messages.Message):
+    next_cursor = messages.StringField(1)
+
+
+class SearchUsersResponse(messages.Message):
+    users = messages.MessageField(UserMessage, 1, repeated=True)
+    next_cursor = messages.StringField(2)
+    has_more = messages.BooleanField(3)
+
+
 class UsersService(remote.Service):
 
     @remote.method(CanAdminRequest, CanAdminResponse)
@@ -241,4 +251,14 @@ class UsersService(remote.Service):
         if user:
             user.delete()
         resp = DeleteUserResponse()
+        return resp
+
+    @remote.method(SearchUsersRequest, SearchUsersResponse)
+    def search(self, request):
+        users, next_cursor, has_more  = PersistentUser.search()
+        resp = SearchUsersResponse()
+        resp.users = [user.to_message() for user in users]
+        resp.has_more = has_more
+        if next_cursor:
+            resp.next_cursor = next_cursor.urlsafe()
         return resp

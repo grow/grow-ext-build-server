@@ -7,8 +7,12 @@ libraries:
   version: latest
 
 handlers:
+- url: /_grow/assets/
+  static_dir: dist/
+  secure: always
 - url: /_grow/api/.*
   script: extensions.grow_build_server.api
+  secure: always
 - url: /_grow/.*
   script: extensions.grow_build_server.backend
 - url: /.*
