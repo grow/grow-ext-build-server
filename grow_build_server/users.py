@@ -1,5 +1,7 @@
 from protorpc import messages
 from protorpc import remote
+from google.appengine.ext.ndb import msgprop
+from protorpc import message_types
 import Cookie
 import config as config_lib
 import google.auth.transport.requests
@@ -83,6 +85,12 @@ class PersistentUser(ndb.Model):
     def delete(self):
         self.key.delete()
 
+    def to_message(self):
+        message = UserMessage()
+        message.email = self.email
+        message.domain = self.domain
+        return message
+
 
 class User(object):
 
@@ -139,6 +147,7 @@ class User(object):
 class UserMessage(messages.Message):
     email = messages.StringField(1)
     domain = messages.StringField(2)
+    created = message_types.DateTimeField(3)
 
 
 class MeRequest(messages.Message):
@@ -163,6 +172,22 @@ class CanAdminRequest(messages.Message):
 
 class CanAdminResponse(messages.Message):
     can_admin = messages.BooleanField(1)
+
+
+class DeleteUserRequest(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class DeleteUserResponse(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class CreateUserRequest(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class CreateUserResponse(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
 
 
 class UsersService(remote.Service):
@@ -201,4 +226,19 @@ class UsersService(remote.Service):
         resp = MeResponse()
         if user:
             resp.user = user.to_message()
+        return resp
+
+    @remote.method(CreateUserRequest, CreateUserResponse)
+    def create(self, request):
+        user = PersistentUser.create(request.user.email)
+        resp = CreateUserResponse()
+        resp.user = user.to_message()
+        return resp
+
+    @remote.method(DeleteUserRequest, DeleteUserResponse)
+    def delete(self, request):
+        user = PersistentUser.get(request.user.email)
+        if user:
+            user.delete()
+        resp = DeleteUserResponse()
         return resp

@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 
 {% block main %}
-test
-
+<form class="form">
+  <div class="form__row">
+    <div class="form__row__label">Email</div>
+    <div class="form__row__control">
+      <input type="text">
+    </div>
+  </div>
+  <div class="form__row">
+    {% for option in options %}
+      <div class="form__row__option">
+        <input type="checkbox" value="{{option.id}}"> {{option.label}}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="form__row">
+    <button>Add user</button>
+  </div>
+</form>
 {% endblock %}
