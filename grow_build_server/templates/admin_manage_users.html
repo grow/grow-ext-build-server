@@ -1,41 +1,61 @@
 {% extends "base.html" %}
 
 {% block main %}
+<div class="main__title">Users</div>
 <div ng-controller="ManageUsersController as ctrl">
-  <form
-      class="form"
-      ng-submit="ctrl.create(ctrl.user.email)">
-    <div class="form__row">
-      <div class="form__row__label">Email</div>
-      <div class="form__row__control">
-        <input type="text" ng-model="ctrl.user.email">
-      </div>
-    </div>
-    <div class="form__row">
-      {% for option in options %}
-        <div class="form__row__option">
-          <input type="checkbox" value="{{option.id}}"> {{option.label}}
+  <div class="main__card main__card--sm">
+    <form
+        class="form"
+        ng-submit="ctrl.create(ctrl.user.email)">
+      <div class="form__row">
+        <div class="form__row__field">
+          <textarea class="form__row__field__control" ng-model="ctrl.user.email" placeholder="Enter email addresses, separated by new lines or commas"></textarea>
         </div>
-      {% endfor %}
-    </div>
-    <div class="form__row">
-      <button type="submit" class="button">Add user</button>
-    </div>
-  </form>
+      </div>
+      <div class="form__row">
+        {% for option in options %}
+          <div class="form__row__option">
+            <input
+               ng-model="ctrl.folders.{{option.id}}"
+               type="checkbox" value="{{option.id}}"> {{option.label}}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="form__row">
+        <button type="submit" class="button">Add users</button>
+      </div>
+    </form>
+  </div>
 
-  <div class="main__card">
+  <div class="main__card main__card--sm">
+    <form class="form" ng-submit="ctrl.search(ctrl.query)">
+      <div class="form__row">
+        <div class="form__row__field">
+          <input ng-model="ctrl.query" type="text" class="form__row__field__control--icon form__row__field__control" placeholder="Search by email">
+          <i class="material-icons">search</i>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="main__card" ng-if="ctrl.users.length">
     <table class="table" ng-cloak>
       <thead class="table__head">
         <tr class="table__row">
-          <td>Email</td>
-          <td>Folders</td>
-          <td>Created</td>
+          <td class="table__row__cell">Email</td>
+          <td class="table__row__cell">Folders</td>
+          <td class="table__row__cell">Modified</td>
         </tr>
       </thead>
       <tr ng-repeat="user in ctrl.users" class="table__row">
-        <td class="table__row__cell"><a href="/_grow/users/[[user.email]]">[[user.email]]</a></td>
+        <td class="table__row__cell">
+          <a class="table__row__cell__link" href="/_grow/users/[[user.email]]">[[user.email]]</a>
+        </td>
         <td class="table__row__cell">[[user.num_folders]]</td>
-        <td class="table__row__cell">[[user.created]]</td>
+        <td class="table__row__cell">
+          [[user.modified|date:'medium']]
+          <span ng-if="user.modified_by">by [[user.modified_by]]</span>
+        </td>
       </tr>
     </table>
   </div>

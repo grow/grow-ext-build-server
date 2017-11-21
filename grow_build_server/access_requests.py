@@ -200,6 +200,7 @@ class ManageUserHandler(webapp2.RequestHandler):
         user_to_edit = users.PersistentUser.get(email)
         html = template.render({
             'user': user_to_edit,
+            'folders': users.list_folder_messages(),
         })
         self.response.out.write(html)
 

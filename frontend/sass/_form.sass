@@ -1,7 +1,30 @@
 .form
-  margin-bottom: 30px
-
   .form__label
     font-weight: bold
     display: block
     margin-bottom: 4px
+
+  .form__row
+
+  .form__row__field
+    position: relative
+    textarea
+      border: 1px solid #ddd
+      font-family: 'Roboto', 'arial', 'helvetica neue', sans-serif
+      font-size: 14px
+      padding: 10px
+      min-width: 400px
+      min-height: 50px
+
+  .form__row__field__control
+    border: 1px solid #ddd
+
+    &--icon
+      padding-left: 55px
+
+      & + i
+        left: 15px
+        opacity: .5
+        pointer-events: none
+        position: absolute
+        top: 8px

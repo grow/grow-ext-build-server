@@ -1,28 +1,74 @@
 {% extends "base.html" %}
 
 {% block main %}
+<div class="main__nav">
+  <a class="icon-button" href="/_grow/users">
+    <i class="material-icons">arrow_back</i>
+    Back to users
+  </a>
+</div>
 <div
+    ng-cloak
     ng-controller="ManageUserController as ctrl"
     ng-init="ctrl.setEmail('{{user.email}}')">
   <div class="main__card main__card--sm">
     <div class="main__card__title">
       [[ctrl.user.email]]
     </div>
+    <div class="main__card__subtitle">
+      Modified [[ctrl.user.modified|date:'medium']]
+      <span ng-if="ctrl.user.modified_by">
+        by [[ctrl.user.modified_by]]
+      </span>
+    </div>
   </div>
-  <div class="main__card">
+  {% if user.is_wildcard %}
+    <div class="main__card main__card--sm main__card--info">
+      This is a wildcard user. All users in <b>{{user.domain}}</b> may access to the folders below.
+    </div>
+  {% else %}
+    <div class="main__card main__card--sm">
+      <div class="main__card__subtitle">
+        Send an email to the user about their access level containing a link to the website.
+      </div>
+      <div class="main__card__row">
+        <button class="button">Send email</button>
+      </div>
+    </div>
+  {% endif %}
+  <div class="main__card main__card--sm">
     <table class="table">
       <thead class="table__head">
         <tr class="table__row">
           <td></td>
+          <td>Status</td>
           <td>Folder</td>
         </tr>
-        {% for folder in folders %}
-        <tr>
-          <td><input type="checkbox"></td>
-          <td></td>
-        </tr>
-        {% endfor %}
       </thead>
+      {% for folder in folders %}
+      <tr>
+        <td class="table__row__checkbox">
+          <input
+               ng-change="ctrl.serializeAndUpdateFolders()"
+               ng-model="ctrl.folders['{{folder.folder_id}}']"
+               type="checkbox" id="folder-{{folder.folder_id}}">
+        </td>
+        <td>
+        </td>
+        <td>
+          <label for="folder-{{folder.folder_id}}" class="table__row__checkbox-label">
+            {{folder.title}}
+            {% if "Archive" in folder.title %}
+              <i class="material-icons">lock</i>
+            {% endif %}
+          </label>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="main__card main__card--sm">
+    <button ng-click="ctrl.deleteUser()" class="button button--red">Delete user</button>
   </div>
 </div>
 {% endblock %}

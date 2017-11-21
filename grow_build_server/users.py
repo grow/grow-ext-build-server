@@ -10,12 +10,38 @@ import google_sheets
 import logging
 import os
 import re
+import yaml
+from google.appengine.api import users as api_users
 from google.appengine.ext import ndb
 from google.appengine.datastore import datastore_query
 
 HTTP_REQUEST = google.auth.transport.requests.Request()
 COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
 REFRESH_COOKIE_NAME = os.getenv('FIREBASE_REFRESH_TOKEN_COOKIE', 'firebaseRefreshToken')
+
+
+class FolderMessage(messages.Message):
+    folder_id = messages.StringField(1)
+    title = messages.StringField(2)
+    has_access = messages.BooleanField(3)
+    has_requested = messages.BooleanField(4)
+
+
+class FolderStatus(messages.Enum):
+    ALL_APPROVED = 1
+    SOME_REQUESTED = 2
+
+
+class UserMessage(messages.Message):
+    email = messages.StringField(1)
+    domain = messages.StringField(2)
+    created = message_types.DateTimeField(3)
+    created_by = messages.StringField(4)
+    modified = message_types.DateTimeField(5)
+    modified_by = messages.StringField(6)
+    num_folders = messages.IntegerField(7)
+    folders = messages.MessageField(FolderMessage, 8, repeated=True)
+    folder_status = messages.EnumField(FolderStatus, 9)
 
 
 def get_protected_information(protected_paths, path_from_url):
@@ -42,26 +68,39 @@ class PersistentUser(ndb.Model):
     domain = ndb.StringProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
+    modified_by = ndb.StringProperty()
     created_by = ndb.StringProperty()
-    folders = ndb.StringProperty(repeated=True)
     num_folders = ndb.IntegerProperty()
+    is_wildcard = ndb.BooleanProperty()
+    folders = msgprop.MessageProperty(FolderMessage, repeated=True)
+    folder_status = msgprop.EnumProperty(FolderStatus)
 
     def _pre_put_hook(self):
         if self.email:
             self.email = self.email.strip().lower()
             self.domain = self.email.split('@')[-1]
+            self.is_wildcard = self.email[0] == '*'
         if self.created_by:
             self.created_by = self.created_by.strip().lower()
+        if self.modified_by:
+            self.modified_by = self.modified_by.strip().lower()
         if self.folders:
-            self.folders = [folder.lower() for folder in self.folders]
             self.num_folders = len(self.folders)
+            folder_status = FolderStatus.ALL_APPROVED
+            for folder in self.folders:
+                if folder.has_requested:
+                    folder_status = FolderStatus.SOME_REQUESTED
+            self.folder_status = folder_status
 
     @classmethod
-    def search(cls, cursor=None, limit=None):
+    def search(cls, query_string=None, cursor=None, limit=None):
         limit = limit or 200
         start_cursor = datastore_query.Cursor(urlsafe=cursor) \
                 if cursor else None
         query = cls.query()
+        if query_string:
+            # TODO: Support query language.
+            query = query.filter(cls.email == query_string)
         query = query.order(-cls.created)
         results, next_cursor, has_more = \
                 query.fetch_page(limit, start_cursor=start_cursor)
@@ -78,6 +117,7 @@ class PersistentUser(ndb.Model):
         user = cls(key=key)
         user.email = email
         user.created_by = created_by
+        user.modified_by = created_by
         user.put()
         return user
 
@@ -92,13 +132,49 @@ class PersistentUser(ndb.Model):
     def to_message(self):
         message = UserMessage()
         message.created_by = self.created_by
+        message.modified_by = self.modified_by
         message.created = self.created
         message.domain = self.domain
         message.email = self.email
-        # message.folders = self.folders
+        if self.folders:
+            message.folders = self.folders
+        message.folder_status = self.folder_status
         message.modified = self.modified
         message.num_folders = self.num_folders
         return message
+
+    def request_access(self, folders):
+        # Return if the folder is already requested or granted.
+        if self.folders:
+            for user_folder in self.folders:
+                for folder in folders:
+                    if user_folder == folder.folder_id:
+                        return
+        else:
+            self.folders = []
+        for folder in folders:
+            message = FolderMessage(
+                folder_id=folder.folder_id,
+                has_requested=True)
+            self.folders.append(message)
+        self.put()
+
+    def update_folders(self, folders):
+        # TODO: Verify this doesn't clobber data.
+        if self.folders:
+            updated_folder_ids = [folder.folder_id for folder in folders]
+            for i, folder in enumerate(self.folders):
+                if folder.folder_id in updated_folder_ids:
+                    del self.folders[i]
+        new_folders = []
+        for folder in folders:
+            message = FolderMessage(
+                folder_id=folder.folder_id,
+                has_access=folder.has_access,
+                has_requested=folder.has_requested)
+            new_folders.append(message)
+        self.folders = new_folders
+        self.put()
 
 
 class User(object):
@@ -154,22 +230,13 @@ class User(object):
 
 
 def list_folder_messages():
-    pass
-
-
-class FolderMessage(messages.Message):
-    pass
-
-
-class UserMessage(messages.Message):
-    email = messages.StringField(1)
-    domain = messages.StringField(2)
-    created = message_types.DateTimeField(3)
-    created_by = messages.StringField(4)
-    modified = message_types.DateTimeField(5)
-    modified_by = messages.StringField(6)
-    num_folders = messages.IntegerField(7)
-    folders = messages.MessageField(FolderMessage, 8, repeated=True)
+    folders = []
+    data = yaml.load(open(os.path.join(os.path.dirname(__file__), 'folders.yaml')))
+    for folder_id, title in data.iteritems():
+        folder_id = str(folder_id)
+        folders.append(FolderMessage(folder_id=folder_id, title=title))
+    folders = sorted(folders, key=lambda folder: folder.title)
+    return folders
 
 
 class MeRequest(messages.Message):
@@ -212,6 +279,14 @@ class GetUserResponse(messages.Message):
     user = messages.MessageField(UserMessage, 1)
 
 
+class UpdateUserRequest(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
+class UpdateUserResponse(messages.Message):
+    user = messages.MessageField(UserMessage, 1)
+
+
 class CreateUserRequest(messages.Message):
     user = messages.MessageField(UserMessage, 1)
 
@@ -222,6 +297,7 @@ class CreateUserResponse(messages.Message):
 
 class SearchUsersRequest(messages.Message):
     next_cursor = messages.StringField(1)
+    query = messages.StringField(2)
 
 
 class SearchUsersResponse(messages.Message):
@@ -270,7 +346,7 @@ class UsersService(remote.Service):
 
     @remote.method(CreateUserRequest, CreateUserResponse)
     def create(self, request):
-        created_by = users.get_current_user().email
+        created_by = api_users.get_current_user().email()
         user = PersistentUser.create(
                 request.user.email, created_by=created_by)
         resp = CreateUserResponse()
@@ -287,12 +363,21 @@ class UsersService(remote.Service):
 
     @remote.method(SearchUsersRequest, SearchUsersResponse)
     def search(self, request):
-        users, next_cursor, has_more  = PersistentUser.search()
+        query = request.query
+        users, next_cursor, has_more = PersistentUser.search(query)
         resp = SearchUsersResponse()
         resp.users = [user.to_message() for user in users]
         resp.has_more = has_more
         if next_cursor:
             resp.next_cursor = next_cursor.urlsafe()
+        return resp
+
+    @remote.method(UpdateUserRequest, UpdateUserResponse)
+    def update(self, request):
+        user = PersistentUser.get(request.user.email)
+        user.update_folders(request.user.folders)
+        resp = UpdateUserResponse()
+        resp.user = user.to_message() if user else None
         return resp
 
     @remote.method(GetUserRequest, GetUserResponse)
