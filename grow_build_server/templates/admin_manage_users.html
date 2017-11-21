@@ -27,7 +27,7 @@
     </form>
   </div>
 
-  <div class="main__card main__card--sm">
+  <div class="main__card main__card--sm main__card--flex">
     <form class="form" ng-submit="ctrl.search(ctrl.query)">
       <div class="form__row">
         <div class="form__row__field">
@@ -36,6 +36,7 @@
         </div>
       </div>
     </form>
+    <button onclick="window.location = '/_grow/users/csv'" class="button button--grey">Download CSV</button>
   </div>
 
   <div class="main__card" ng-if="ctrl.users.length">
@@ -45,6 +46,7 @@
           <td class="table__row__cell">Email</td>
           <td class="table__row__cell">Folders</td>
           <td class="table__row__cell">Modified</td>
+          <td class="table__row__cell">Modified by</td>
         </tr>
       </thead>
       <tr ng-repeat="user in ctrl.users" class="table__row">
@@ -54,7 +56,9 @@
         <td class="table__row__cell">[[user.num_folders]]</td>
         <td class="table__row__cell">
           [[user.modified|date:'medium']]
-          <span ng-if="user.modified_by">by [[user.modified_by]]</span>
+        </td>
+        <td class="table__row__cell">
+          <span ng-if="user.modified_by">[[user.modified_by]]</span>
         </td>
       </tr>
     </table>

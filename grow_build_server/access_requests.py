@@ -1,6 +1,7 @@
 from google.appengine.api import users as api_users
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import mail_handlers
+import datetime
 import users
 import emailer
 import google_sheets
@@ -65,6 +66,24 @@ def process_access_requests(config):
                 email_config=config['access_requests']['emails'])
         if req['form']['Timestamp'] and req['email']:
             SeenAccessRequest.save(req['form']['Timestamp'], req['email'])
+
+
+def send_email_to_existing_user(email, email_config, kwargs=None):
+    title =  '[{}] Your access has been updated'
+    subject = title.format(email_config['title'])
+    params = {
+        'email': email,
+        'email_config': email_config
+    }
+    if kwargs:
+        params.update(kwargs)
+    emailer_ent = emailer.Emailer()
+    emailer_ent.send(
+        to=email,
+        subject=subject,
+        template_path='email_to_existing_user.html',
+        kwargs=params)
+    logging.info('Emailed existing user -> {}'.format(email))
 
 
 def send_email_to_new_user(email, email_config):
@@ -230,3 +249,15 @@ class ProcessHandler(webapp2.RequestHandler):
 
     def get(self):
         process_access_requests(self.app.config)
+
+
+class DownloadCsvHandler(webapp2.RequestHandler):
+
+    def get(self):
+        content = users.PersistentUser.to_csv()
+        filename = 'users_{}'.format(datetime.datetime.now())
+        filename = filename.replace(' ', '-')
+        header = 'inline; filename="{}.csv"'.format(filename)
+        self.response.headers['Content-Type'] = 'text/csv'
+        self.response.headers['Content-Disposition'] = header
+        self.response.out.write(content)

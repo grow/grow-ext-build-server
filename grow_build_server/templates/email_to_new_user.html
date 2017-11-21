@@ -1,7 +1,7 @@
 {% extends "email.html" %}
 
 {% block main %}
-  <p>Your request to access {{email_config.title}} has been approved.</p>
+<p>Your request to access <b>{{email_config.title}}</b> has been approved.</p>
   <div class="main__cta">
     <a class="btn" href="{{email_config.base_url}}">Visit website</a>
   </div>

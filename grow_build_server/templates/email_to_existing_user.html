@@ -1,0 +1,14 @@
+{% extends "email.html" %}
+
+{% block main %}
+  <p>Your access to <b>{{email_config.title}}</b>has been updated. You now have access to the following folders:</p>
+  <ul>
+    {% for folder in folders|sort(attribute='title') %}
+      <li>{{folder.title}}</li>
+    {% endfor %}
+  </ul>
+  <div class="main__cta">
+    <a class="btn" href="{{email_config.base_url}}">Visit website</a>
+  </div>
+{% endblock %}
+

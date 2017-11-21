@@ -111,6 +111,41 @@ class PersistentUser(ndb.Model):
         return email.strip().lower()
 
     @classmethod
+    def to_csv(cls):
+        # TODO: Move to separate file.
+        from protorpc import protojson
+        import io
+        import csv
+        import json
+        _csv_header = [
+            'created',
+            'email',
+            'folders',
+        ]
+        header = _csv_header
+        ents, _, _ = cls.search(limit=5000)
+        rows = []
+        for ent in ents:
+            row = json.loads(protojson.encode_message(ent.to_message()))
+            for key in row.keys():
+                if key not in header:
+                    del row[key]
+            for key in row:
+                if key == 'folders':
+                    row[key] = json.dumps(row[key])
+                if isinstance(row[key], unicode):
+                    row[key] = row[key].encode('utf-8')
+            rows.append(row)
+        if not rows:
+            return ''
+        fp = io.BytesIO()
+        writer = csv.DictWriter(fp, header)
+        writer.writeheader()
+        writer.writerows(rows)
+        fp.seek(0)
+        return fp.read()
+
+    @classmethod
     def create(cls, email, created_by=None):
         email = cls.normalize_email(email)
         key = ndb.Key('PersistentUser', email)
@@ -386,3 +421,12 @@ class UsersService(remote.Service):
         resp = GetUserResponse()
         resp.user = user.to_message() if user else None
         return resp
+
+    @remote.method(GetUserRequest, GetUserResponse)
+    def send_email_notification(self, request):
+        user = PersistentUser.get(request.user.email)
+        email = user.email
+        kwargs = {
+            'folders': user.folders,
+        }
+        access_requests.send_email_to_existing_user(email, email_config, kwargs)
