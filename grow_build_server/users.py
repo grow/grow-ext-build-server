@@ -192,7 +192,8 @@ class PersistentUser(ndb.Model):
         key = ndb.Key('PersistentUser', email)
         user = cls(key=key)
         user.email = email
-        user.folders = folders
+        if folders:
+            user.folders = folders
         user.created_by = created_by
         user.modified_by = created_by
         return user
@@ -424,15 +425,10 @@ class UsersService(remote.Service):
 
     @remote.method(CanReadRequest, CanReadResponse)
     def can_read(self, request):
-        config = config_lib.instance()
-        protected_paths = config.get('protected_paths', [])
-        sheet_id, sheet_gid, is_protected = \
-                get_protected_information(
-                        protected_paths, request.path)
-        protected_sheet = \
-                google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         user = User.get_from_environ()
-        can_read = user and user.can_read(protected_sheet, request.path)
+        persistent_user = user.get_persistent()
+        can_read = persistent_user \
+                and persistent_user.can_read(request.path)
         resp = CanReadResponse()
         resp.can_read = can_read
         return resp

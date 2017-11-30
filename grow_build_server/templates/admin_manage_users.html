@@ -26,13 +26,17 @@
       </div>
     </form>
     <form
-        class="form form--expandable"
+        class="form form--secondary"
         ng-submit="ctrl.importFromSheets(ctrl.importSheetId, ctrl.importSheetGid)">
+      <div class="form__title">
+        Import users from Google Sheets
+      </div>
+      <div class="form__body">
+        You can import users from Google Sheets. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
+      </div>
       <div class="form__row">
         <input ng-model="ctrl.importSheetId" type="text" class="form__row__field__control" placeholder="Google Sheets ID">
         <input ng-model="ctrl.importSheetGid" type="text" class="form__row__field__control" placeholder="Google Sheets GID">
-      </div>
-      <div class="form__row">
         <button type="submit" class="button">Import</button>
       </div>
     </form>

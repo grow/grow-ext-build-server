@@ -1,6 +1,7 @@
 from google.appengine.api import users as api_users
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp import mail_handlers
+from google.appengine.api import app_identity
 import datetime
 import users
 import emailer
@@ -9,6 +10,10 @@ import jinja2
 import logging
 import os
 import webapp2
+
+
+APPID = app_identity.get_application_id()
+SERVICE_ACCOUNT_EMAIL = '{}@appspot.gserviceaccount.com'.format(APPID)
 
 
 class SeenAccessRequest(ndb.Model):
@@ -240,6 +245,7 @@ class ManageUsersHandler(webapp2.RequestHandler):
         # TODO: Move to a decorator (above).
         template = jinja2_env().get_template('admin_manage_users.html')
         html = template.render({
+            'service_account_email': SERVICE_ACCOUNT_EMAIL,
             'folders': users.list_folder_messages(),
         })
         self.response.out.write(html)
