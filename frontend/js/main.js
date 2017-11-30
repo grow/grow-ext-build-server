@@ -138,3 +138,14 @@ buildServer.ng.ManageUsersController.prototype.create = function(email) {
     this.$scope.$apply();
   }.bind(this));
 };
+
+
+buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheetId, sheetGid) {
+  buildServer.rpc('users.import_from_sheets', {
+    'sheet_id': sheetId,
+    'sheet_gid': sheetGid,
+  }).then(function(resp) {
+    console.log(resp);
+    this.$scope.$apply();
+  }.bind(this));
+};

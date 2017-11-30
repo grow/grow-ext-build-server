@@ -20,11 +20,22 @@ COOKIE_NAME = os.getenv('FIREBASE_TOKEN_COOKIE', 'firebaseToken')
 REFRESH_COOKIE_NAME = os.getenv('FIREBASE_REFRESH_TOKEN_COOKIE', 'firebaseRefreshToken')
 
 
+def _list_folders():
+    pod_root = os.path.join(os.path.dirname(__file__), '..', '..')
+    path = os.path.join(pod_root, 'build-server-config.yaml')
+    path = os.path.abspath(path)
+    return yaml.load(open(path))['folders']
+
+
+FOLDERS = _list_folders()
+
+
 class FolderMessage(messages.Message):
     folder_id = messages.StringField(1)
     title = messages.StringField(2)
     has_access = messages.BooleanField(3)
     has_requested = messages.BooleanField(4)
+    regex = messages.StringField(5)
 
 
 class FolderStatus(messages.Enum):
@@ -107,8 +118,32 @@ class PersistentUser(ndb.Model):
         return (results, next_cursor, has_more)
 
     @classmethod
+    def get_by_email(cls, email):
+        email = cls.normalize_email(email)
+        key = ndb.Key('PersistentUser', email)
+        return key.get()
+
+    @classmethod
     def normalize_email(cls, email):
         return email.strip().lower()
+
+    def can_read(self, path_from_url):
+        folders = list_folder_messages()
+        folder_ids_with_access = [folder.folder_id for folder in self.folders]
+        for folder in folders:
+            path_regex = folder.regex
+            if re.match(path_regex, path_from_url):
+                if folder.folder_id not in folder_ids_with_access:
+                    return False
+        return True
+
+    @classmethod
+    def import_from_sheets(cls, sheet_id, sheet_gid, created_by=None):
+        rows = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
+        emails = [row['email'] for row in rows]
+        folders = list_folder_messages(default_has_access=True)
+        return cls.create_multi(emails, folders=folders,
+                                created_by=created_by)
 
     @classmethod
     def to_csv(cls):
@@ -146,15 +181,28 @@ class PersistentUser(ndb.Model):
         return fp.read()
 
     @classmethod
-    def create(cls, email, created_by=None):
+    def create(cls, email, folders=None, created_by=None):
+        user = cls._create(email, folders, created_by)
+        user.put()
+        return user
+
+    @classmethod
+    def _create(cls, email, folders=None, created_by=None):
         email = cls.normalize_email(email)
         key = ndb.Key('PersistentUser', email)
         user = cls(key=key)
         user.email = email
+        user.folders = folders
         user.created_by = created_by
         user.modified_by = created_by
-        user.put()
         return user
+
+    @classmethod
+    def create_multi(cls, emails, folders=None, created_by=None):
+        ents = [cls._create(email, folders=folders, created_by=created_by)
+                for email in emails]
+        ndb.put_multi(ents)
+        return ents
 
     @classmethod
     def get(cls, email):
@@ -232,6 +280,9 @@ class User(object):
         if not refresh_token or not firebase_token:
             return
 
+    def get_persistent(self):
+        return PersistentUser.get_by_email(self.email)
+
     @classmethod
     def get_from_environ(cls):
         firebase_token = get_cookie_value(COOKIE_NAME)
@@ -245,7 +296,7 @@ class User(object):
             if 'Token expired' in str(e):
                 logging.info('Firebase token expired.')
             else:
-                logging.exception('Problem with Firebase token.')
+                logging.info('Problem with Firebase token -> {}'.format(str(e)))
 
     def can_admin(self, sheet):
         return self.can_read(sheet)
@@ -264,21 +315,23 @@ class User(object):
         return message
 
 
-def list_folder_messages():
+def list_folder_messages(default_has_access=False):
     folders = []
-    data = yaml.load(open(os.path.join(os.path.dirname(__file__), 'folders.yaml')))
-    for folder_id, title in data.iteritems():
-        folder_id = str(folder_id)
-        folders.append(FolderMessage(folder_id=folder_id, title=title))
+    for folder in FOLDERS:
+        folders.append(FolderMessage(
+            folder_id=folder['folder_id'],
+            title=folder['title'],
+            regex=folder['regex'],
+            has_access=default_has_access))
     folders = sorted(folders, key=lambda folder: folder.title)
     return folders
 
 
-class MeRequest(messages.Message):
+class GetMeRequest(messages.Message):
     pass
 
 
-class MeResponse(messages.Message):
+class GetMeResponse(messages.Message):
     user = messages.MessageField(UserMessage, 1)
 
 
@@ -341,7 +394,20 @@ class SearchUsersResponse(messages.Message):
     has_more = messages.BooleanField(3)
 
 
+class ImportFromSheetsRequest(messages.Message):
+    sheet_id = messages.StringField(1)
+    sheet_gid = messages.StringField(2)
+
+
+class ImportFromSheetsResponse(messages.Message):
+    num_imported = messages.IntegerField(1)
+
+
 class UsersService(remote.Service):
+
+    @property
+    def me(self):
+        return api_users.get_current_user().email()
 
     @remote.method(CanAdminRequest, CanAdminResponse)
     def can_admin(self, request):
@@ -371,19 +437,18 @@ class UsersService(remote.Service):
         resp.can_read = can_read
         return resp
 
-    @remote.method(MeRequest, MeResponse)
-    def me(self, request):
+    @remote.method(GetMeRequest, GetMeResponse)
+    def get_me(self, request):
         user = User.get_from_environ()
-        resp = MeResponse()
+        resp = GetMeResponse()
         if user:
             resp.user = user.to_message()
         return resp
 
     @remote.method(CreateUserRequest, CreateUserResponse)
     def create(self, request):
-        created_by = api_users.get_current_user().email()
         user = PersistentUser.create(
-                request.user.email, created_by=created_by)
+                request.user.email, created_by=self.me)
         resp = CreateUserResponse()
         resp.user = user.to_message()
         return resp
@@ -429,4 +494,16 @@ class UsersService(remote.Service):
         kwargs = {
             'folders': user.folders,
         }
-        access_requests.send_email_to_existing_user(email, email_config, kwargs)
+        access_requests.send_email_to_existing_user(
+                email, email_config, kwargs)
+
+    @remote.method(ImportFromSheetsRequest, ImportFromSheetsResponse)
+    def import_from_sheets(self, request):
+        sheet_id = request.sheet_id
+        sheet_gid = request.sheet_gid
+        ents = PersistentUser.import_from_sheets(
+            sheet_id=sheet_id, sheet_gid=sheet_gid,
+            created_by=self.me)
+        resp = ImportFromSheetsResponse()
+        resp.num_imported = len(ents)
+        return resp

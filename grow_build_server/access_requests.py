@@ -261,3 +261,9 @@ class DownloadCsvHandler(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'text/csv'
         self.response.headers['Content-Disposition'] = header
         self.response.out.write(content)
+
+
+class ImportFromSheetsHandler(webapp2.RequestHandler):
+
+    def get(self):
+        users.PersistentUser.import_from_sheets()

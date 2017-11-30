@@ -45,23 +45,10 @@ class SheetsAuthMiddleware(object):
                     return self.app(environ, start_response)
 
         user = users.User.get_from_environ()
-        sheet = google_sheets.get_or_create_sheet_from_settings(
-                title=self.title, emails=self.admins)
-
-        # If the user is on the register page and if they have access,
-        # redirect them to the homepage.
-        has_access = user and user.can_read(sheet, path)
-        if path in [self.sign_in_path, self.request_access_path] and has_access:
-            self.redirect('/', start_response)
-            return []
-
-        if path == self.redirect_to_sheet_path:
-            sheet_id = google_sheets.Settings.instance().sheet_id
-            url = google_sheets.EDIT_URL.format(sheet_id)
-            return self.redirect(url, start_response)
+        persistent_user = user and user.get_persistent()
 
         # Redirect to the sign in page if not signed in.
-        if not user:
+        if not user or not persistent_user:
             if self.sign_in_path:
                 url = '{}?next={}'.format(self.sign_in_path, path)
                 return self.redirect(url, start_response)
@@ -70,6 +57,14 @@ class SheetsAuthMiddleware(object):
                 response_headers = []
                 start_response(status, response_headers)
                 return []
+
+        has_access = persistent_user.can_read(path)
+
+        # If the user is on the register page and if they have access,
+        # redirect them to the homepage.
+        if path in [self.sign_in_path, self.request_access_path] and has_access:
+            self.redirect('/', start_response)
+            return []
 
         if not has_access:
             if self.request_access_path:

@@ -25,6 +25,17 @@
         <button type="submit" class="button">Add users</button>
       </div>
     </form>
+    <form
+        class="form form--expandable"
+        ng-submit="ctrl.importFromSheets(ctrl.importSheetId, ctrl.importSheetGid)">
+      <div class="form__row">
+        <input ng-model="ctrl.importSheetId" type="text" class="form__row__field__control" placeholder="Google Sheets ID">
+        <input ng-model="ctrl.importSheetGid" type="text" class="form__row__field__control" placeholder="Google Sheets GID">
+      </div>
+      <div class="form__row">
+        <button type="submit" class="button">Import</button>
+      </div>
+    </form>
   </div>
 
   <div class="main__card main__card--sm main__card--flex">

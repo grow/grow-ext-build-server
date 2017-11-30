@@ -24,6 +24,7 @@ else:
 from google.appengine.ext import vendor
 extensions_dir = os.path.join(os.path.dirname(podspec_path), 'extensions')
 vendor.add('extensions')
+vendor.add(extensions_dir)
 
 # Set build root.
 root = os.path.join(os.path.dirname(__file__), '..', '..', DEFAULT_DIR)

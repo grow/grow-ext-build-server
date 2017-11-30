@@ -100,6 +100,7 @@ def _request_sheet_content(sheet_id, gid=None):
 
 
 def get_sheet(sheet_id, gid=None, use_cache=True):
+    """Returns a list of rows from a sheet."""
     query_dict = get_query_dict()
     force_cache = RELOAD_ACL_QUERY_PARAM in query_dict
     cache_key = 'google_sheet:{}:{}'.format(sheet_id, gid)

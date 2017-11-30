@@ -39,8 +39,10 @@ class ProtectedMiddleware(object):
             return self.app(environ, start_response)
 
         user = users.User.get_from_environ()
-        # User is unauthorized.
-        if user is None:
+        persistent_user = user and users.get_persistent()
+
+        # User is unregistered.
+        if not persistent_user:
             if self.sign_in_path:
                 url = '{}?next={}'.format(self.sign_in_path, path_from_url)
                 return self.redirect(url, start_response)
@@ -50,16 +52,14 @@ class ProtectedMiddleware(object):
                 start_response(status, response_headers)
                 return []
 
-        protected_sheet = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
-        if user.can_read(protected_sheet, None):
-            return self.app(environ, start_response)
         # User is forbidden.
-        logging.info('Using sheet id -> {}'.format(sheet_id))
-        logging.info('Using sheet gid -> {}'.format(sheet_gid))
-        status = '403 Forbidden'
-        response_headers = [('X-Reason', 'No folder-level access.')]
-        start_response(status, response_headers)
-        return []
+        if not persistent_user.can_read(path_from_url):
+            status = '403 Forbidden'
+            response_headers = [('X-Reason', 'No folder-level access.')]
+            start_response(status, response_headers)
+            return []
+
+        return self.app(environ, start_response)
 
 
 class CacheSheetsHandler(webapp2.RequestHandler):

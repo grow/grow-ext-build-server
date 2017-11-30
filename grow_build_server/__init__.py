@@ -23,6 +23,7 @@ backend = webapp2.WSGIApplication([
     ('/_grow/access-requests/process', access_requests.ProcessHandler),
     ('/_grow/access-requests', access_requests.ManageAccessHandler),
     ('/_grow/users/csv', access_requests.DownloadCsvHandler),
+    ('/_grow/users/import', access_requests.ImportFromSheetsHandler),
     ('/_grow/users/(.*)', access_requests.ManageUserHandler),
     ('/_grow/users', access_requests.ManageUsersHandler),
     ('/_grow/protected/cache-sheets', protected_middleware.CacheSheetsHandler),

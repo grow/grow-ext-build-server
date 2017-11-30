@@ -10,9 +10,9 @@ var Path = {
   CSS_SOURCES: [
     './frontend/sass/**'
   ],
-  CSS_OUT_DIR: './dist/css/',
+  CSS_OUT_DIR: './grow_build_server/dist/css/',
   JS_SOURCES: './frontend/js/*.js',
-  JS_OUT_DIR: './dist/js/',
+  JS_OUT_DIR: './grow_build_server/dist/js/',
 };
 
 var onError = function() {
