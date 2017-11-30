@@ -2,6 +2,7 @@ from protorpc import messages
 from protorpc import remote
 from google.appengine.ext.ndb import msgprop
 from protorpc import message_types
+import config
 import Cookie
 import config as config_lib
 import google.auth.transport.requests
@@ -35,7 +36,13 @@ class FolderMessage(messages.Message):
     title = messages.StringField(2)
     has_access = messages.BooleanField(3)
     has_requested = messages.BooleanField(4)
+    is_locked = messages.BooleanField(6)
     regex = messages.StringField(5)
+
+
+class QuestionMessage(messages.Message):
+    question = messages.StringField(1)
+    answer = messages.StringField(2)
 
 
 class FolderStatus(messages.Enum):
@@ -53,6 +60,8 @@ class UserMessage(messages.Message):
     num_folders = messages.IntegerField(7)
     folders = messages.MessageField(FolderMessage, 8, repeated=True)
     folder_status = messages.EnumField(FolderStatus, 9)
+    questions = messages.MessageField(QuestionMessage, 10, repeated=True)
+    reason = messages.StringField(11)
 
 
 def get_protected_information(protected_paths, path_from_url):
@@ -85,6 +94,8 @@ class PersistentUser(ndb.Model):
     is_wildcard = ndb.BooleanProperty()
     folders = msgprop.MessageProperty(FolderMessage, repeated=True)
     folder_status = msgprop.EnumProperty(FolderStatus)
+    questions = msgprop.MessageProperty(QuestionMessage, repeated=True)
+    reason = ndb.TextProperty()
 
     def _pre_put_hook(self):
         if self.email:
@@ -96,12 +107,13 @@ class PersistentUser(ndb.Model):
         if self.modified_by:
             self.modified_by = self.modified_by.strip().lower()
         if self.folders:
-            self.num_folders = len(self.folders)
             folder_status = FolderStatus.ALL_APPROVED
             for folder in self.folders:
                 if folder.has_requested:
                     folder_status = FolderStatus.SOME_REQUESTED
             self.folder_status = folder_status
+            self.num_folders = len([folder for folder in self.folders
+                                    if folder.has_access])
 
     @classmethod
     def search(cls, query_string=None, cursor=None, limit=None):
@@ -118,14 +130,8 @@ class PersistentUser(ndb.Model):
         return (results, next_cursor, has_more)
 
     @classmethod
-    def get_by_email(cls, email):
-        email = cls.normalize_email(email)
-        key = ndb.Key('PersistentUser', email)
-        return key.get()
-
-    @classmethod
     def normalize_email(cls, email):
-        return email.strip().lower()
+        return email.strip().lower().replace(' ', '')
 
     def can_read(self, path_from_url):
         folders = list_folder_messages()
@@ -194,6 +200,8 @@ class PersistentUser(ndb.Model):
         user.email = email
         if folders:
             user.folders = folders
+        else:
+            user.folders = list_folder_messages(default_has_access=True)
         user.created_by = created_by
         user.modified_by = created_by
         return user
@@ -207,8 +215,20 @@ class PersistentUser(ndb.Model):
 
     @classmethod
     def get(cls, email):
+        email = cls.normalize_email(email)
         key = ndb.Key('PersistentUser', email)
         return key.get()
+
+    @classmethod
+    def get_by_email(cls, email):
+        email = cls.normalize_email(email)
+        key = ndb.Key('PersistentUser', email)
+        return key.get()
+
+    @classmethod
+    def get_or_create(cls, email):
+        ent = cls.get(email)
+        return ent or cls.create(email)
 
     def delete(self):
         self.key.delete()
@@ -225,39 +245,59 @@ class PersistentUser(ndb.Model):
         message.folder_status = self.folder_status
         message.modified = self.modified
         message.num_folders = self.num_folders
+        if self.questions:
+            message.questions = self.questions
+        if self.reason:
+            message.reason = self.reason
         return message
 
-    def request_access(self, folders):
-        # Return if the folder is already requested or granted.
-        if self.folders:
-            for user_folder in self.folders:
-                for folder in folders:
-                    if user_folder == folder.folder_id:
-                        return
-        else:
-            self.folders = []
-        for folder in folders:
-            message = FolderMessage(
-                folder_id=folder.folder_id,
-                has_requested=True)
-            self.folders.append(message)
+    def request_access(self, folders, questions=None,
+                       reason=None,
+                       send_notification=False):
+        if questions:
+            self.questions = questions
+        if reason:
+            self.reason = reason
+        self.folders = self.folders or []
+        existing_folder_ids = [folder.folder_id for folder in self.folders]
+        all_folders = list_folder_messages()
+        requested_folders = folders
+        for folder in requested_folders:
+            if folder.folder_id not in existing_folder_ids:
+                message = FolderMessage(
+                    folder_id=folder.folder_id,
+                    has_requested=True)
+                self.folders.append(message)
+            else:
+                for i, existing_folder in enumerate(self.folders):
+                    if folder.folder_id == existing_folder.folder_id:
+                        self.folders[i].has_requested = True
+                        import logging
+                        logging.info('Updated')
         self.put()
+        if send_notification:
+            build_server_config = config.instance()
+            email_config = build_server_config['access_requests']['emails']
+            req = {
+                'email': self.email,
+                'form': questions,
+            }
+            from . import access_requests
+            access_requests.send_email_to_admins(req, email_config=email_config)
 
     def update_folders(self, folders):
-        # TODO: Verify this doesn't clobber data.
-        if self.folders:
-            updated_folder_ids = [folder.folder_id for folder in folders]
-            for i, folder in enumerate(self.folders):
-                if folder.folder_id in updated_folder_ids:
-                    del self.folders[i]
-        new_folders = []
-        for folder in folders:
-            message = FolderMessage(
-                folder_id=folder.folder_id,
-                has_access=folder.has_access,
-                has_requested=folder.has_requested)
-            new_folders.append(message)
-        self.folders = new_folders
+        self.folders = folders
+#        self.folders = self.folders or []
+#        updated_folder_ids = [folder.folder_id for folder in folders]
+#        for i, folder in enumerate(self.folders):
+#            if folder.folder_id in updated_folder_ids:
+#                del self.folders[i]
+#        for folder in folders:
+#            message = FolderMessage(
+#                folder_id=folder.folder_id,
+#                has_access=folder.has_access,
+#                has_requested=folder.has_requested)
+#            self.folders.append(message)
         self.put()
 
 
@@ -319,11 +359,12 @@ class User(object):
 def list_folder_messages(default_has_access=False):
     folders = []
     for folder in FOLDERS:
+        has_access = default_has_access and 'Archive' not in folder['title']
         folders.append(FolderMessage(
             folder_id=folder['folder_id'],
             title=folder['title'],
             regex=folder['regex'],
-            has_access=default_has_access))
+            has_access=has_access))
     folders = sorted(folders, key=lambda folder: folder.title)
     return folders
 
@@ -402,6 +443,17 @@ class ImportFromSheetsRequest(messages.Message):
 
 class ImportFromSheetsResponse(messages.Message):
     num_imported = messages.IntegerField(1)
+
+
+class RequestAccessRequest(messages.Message):
+    folders = messages.MessageField(FolderMessage, 1, repeated=True)
+    questions = messages.MessageField(QuestionMessage, 2, repeated=True)
+    email = messages.StringField(3)
+    reason = messages.StringField(4)
+
+
+class RequestAccessResponse(messages.Message):
+    pass
 
 
 class UsersService(remote.Service):
@@ -485,6 +537,8 @@ class UsersService(remote.Service):
 
     @remote.method(GetUserRequest, GetUserResponse)
     def send_email_notification(self, request):
+        build_server_config = config.instance()
+        email_config = build_server_config['access_requests']['emails']
         user = PersistentUser.get(request.user.email)
         email = user.email
         kwargs = {
@@ -502,4 +556,15 @@ class UsersService(remote.Service):
             created_by=self.me)
         resp = ImportFromSheetsResponse()
         resp.num_imported = len(ents)
+        return resp
+
+    @remote.method(RequestAccessRequest, RequestAccessResponse)
+    def request_access(self, request):
+        user = PersistentUser.get_or_create(request.email)
+        user.request_access(
+                request.folders,
+                questions=request.questions,
+                reason=request.reason,
+                send_notification=True)
+        resp = RequestAccessResponse()
         return resp

@@ -105,12 +105,13 @@ def send_email_to_new_user(email, email_config):
 
 def send_email_to_admins(req, email_config):
     # Normalize encoding for rendering email template.
-    clean_form = {}
-    for key, val in req['form'].iteritems():
-        if isinstance(val, unicode):
-            val = val.encode('utf-8')
-        clean_form[key] = val.decode('utf-8')
-    req['form'] = clean_form
+    if 'form' in req:
+        for i, question in enumerate(req['form']):
+            answer = question.answer
+            if isinstance(answer, unicode):
+                answer = answer.encode('utf-8')
+            if answer:
+                req['form'][i].answer = answer.decode('utf-8')
     admin_emails = get_admins(notify_only=True)
     if not admin_emails:
         logging.error('No admins to email.')

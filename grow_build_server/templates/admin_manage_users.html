@@ -32,7 +32,7 @@
         Import users from Google Sheets
       </div>
       <div class="form__body">
-        You can import users from Google Sheets. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
+        You can import users from Google Sheets. There should be one column named <b>email</b>. Users will have access to all unlocked folders by default. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
       </div>
       <div class="form__row">
         <input ng-model="ctrl.importSheetId" type="text" class="form__row__field__control" placeholder="Google Sheets ID">

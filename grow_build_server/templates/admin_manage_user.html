@@ -32,11 +32,15 @@
         Send an email to the user about their access level containing a link to the website.
       </div>
       <div class="main__card__row">
-        <button class="button">Send email</button>
+        <button class="button" ng-click="ctrl.sendEmailNotification()">Send email</button>
       </div>
     </div>
   {% endif %}
   <div class="main__card main__card--sm">
+    <div class="main__card__row">
+      <button class="button" ng-click="ctrl.addToAllUnlocked()">Add to all unlocked</button>
+    </div>
+    <br>
     <table class="table">
       <thead class="table__head">
         <tr class="table__row">
@@ -51,9 +55,18 @@
           <input
                ng-change="ctrl.serializeAndUpdateFolders()"
                ng-model="ctrl.folders['{{folder.folder_id}}']"
+               data-folder-id="{{folder.folder_id}}"
+               {% if "Archive" in folder.title %}
+                 data-locked="true"
+               {% endif %}
                type="checkbox" id="folder-{{folder.folder_id}}">
         </td>
         <td>
+          <span ng-if="ctrl.isFolderRequested('{{folder.folder_id}}')">
+            <span class="badge">
+              Requested
+            </span>
+          </span>
         </td>
         <td>
           <label for="folder-{{folder.folder_id}}" class="table__row__checkbox-label">
@@ -66,6 +79,16 @@
       </tr>
       {% endfor %}
     </table>
+  </div>
+  <div class="main__card main__card--sm" ng-if="ctrl.user.questions">
+    <div class="main__card__row main__card__row--spaced" ng-repeat="question in ctrl.user.questions">
+      <div class="main__card__row__item">
+        <b>[[question.question]]</b>
+      </div>
+      <div class="main__card__row__item">
+        [[question.answer]]
+      </div>
+    </div>
   </div>
   <div class="main__card main__card--sm">
     <button ng-click="ctrl.deleteUser()" class="button button--red">Delete user</button>
