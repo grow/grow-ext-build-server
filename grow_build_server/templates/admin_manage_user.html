@@ -36,6 +36,7 @@
       </div>
     </div>
   {% endif %}
+
   <div class="main__card main__card--sm">
     <div class="main__card__row">
       <button class="button" ng-click="ctrl.addToAllUnlocked()">Add to all unlocked</button>
@@ -49,35 +50,29 @@
           <td>Folder</td>
         </tr>
       </thead>
-      {% for folder in folders %}
-      <tr>
+      <tr ng-repeat="folder in ctrl.user.folders">
         <td class="table__row__checkbox">
           <input
                ng-change="ctrl.serializeAndUpdateFolders()"
-               ng-model="ctrl.folders['{{folder.folder_id}}']"
-               data-folder-id="{{folder.folder_id}}"
-               {% if "Archive" in folder.title %}
-                 data-locked="true"
-               {% endif %}
-               type="checkbox" id="folder-{{folder.folder_id}}">
+               ng-model="folder.has_access"
+               ng-checked="folder.has_access"
+               type="checkbox"
+               id="folder-[[folder.folder_id]]">
         </td>
         <td>
-          <span ng-if="ctrl.isFolderRequested('{{folder.folder_id}}')">
+          <span ng-if="folder.has_requested">
             <span class="badge">
               Requested
             </span>
           </span>
         </td>
         <td>
-          <label for="folder-{{folder.folder_id}}" class="table__row__checkbox-label">
-            {{folder.title}}
-            {% if "Archive" in folder.title %}
-              <i class="material-icons">lock</i>
-            {% endif %}
+          <label for="folder-[[folder.folder_id]]" class="table__row__checkbox-label">
+            [[folder.title]]
+            <i ng-if="folder.title.includes('Archive')" class="material-icons">lock</i>
           </label>
         </td>
       </tr>
-      {% endfor %}
     </table>
   </div>
   <div class="main__card main__card--sm" ng-if="ctrl.user.questions">

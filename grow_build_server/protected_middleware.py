@@ -41,10 +41,17 @@ class ProtectedMiddleware(object):
         user = users.User.get_from_environ()
         persistent_user = user and users.get_persistent()
 
+        # User isn't signed in.
+        if not user:
+            if self.sign_in_path:
+                url = '{}?next={}'.format(self.sign_in_path, path_from_url)
+                return self.redirect(url, start_response)
+            return
+
         # User is unregistered.
         if not persistent_user:
             if self.sign_in_path:
-                url = '{}?next={}'.format(self.sign_in_path, path_from_url)
+                url = self.sign_in_path
                 return self.redirect(url, start_response)
             else:
                 status = '401 Unauthorized'

@@ -27,9 +27,7 @@ buildServer.ng = buildServer.ng || {};
 
 buildServer.ng.ManageUserController = function($scope, $element) {
   this.$scope = $scope;
-  this.folders = {};
   this.el = $element[0];
-
   this.user = {};
   this.email = null;
 };
@@ -37,61 +35,21 @@ buildServer.ng.ManageUserController = function($scope, $element) {
 
 buildServer.ng.ManageUserController.prototype.addToAllUnlocked =
     function() {
-  var folderInputEls = this.el.querySelectorAll('[data-folder-id]');
-  [].forEach.call(folderInputEls, function(el) {
-    var folderId = el.getAttribute('data-folder-id');
-    var isLocked = el.getAttribute('data-locked');
-    if (isLocked) {
+  [].forEach.call(this.user['folders'], function(folder) {
+    if (folder['title'].indexOf('Archive') >= 1) {
       return;
     }
-    this.folders[folderId] = true; 
+    folder['has_access'] = true;
   }.bind(this));
   this.serializeAndUpdateFolders();
 };
 
 
-buildServer.ng.ManageUserController.prototype.isFolderRequested =
-    function(folderId) {
-  var folder = this.user.folders;
-  var isRequested = false;
-  if (!this.user || !this.user.folders || !this.user.folders.length) {
-    return false;
-  }
-  this.user.folders.forEach(function(folder) {
-    if (folderId == folder['folder_id'] && folder['has_requested']) {
-      isRequested = true;
-    }
-  });
-  return isRequested;
-};
-
-
 buildServer.ng.ManageUserController.prototype.serializeAndUpdateFolders =
     function() {
-  var folders = [];
-  console.log(this.folders);
-  var allFolderIds = [];
-  var allFolderEls = document.querySelectorAll('[data-folder-id]');
-  [].forEach.call(allFolderEls, function(folderEl) {
-    allFolderIds.push(folderEl.getAttribute('data-folder-id'));
-  });
-  [].forEach.call(allFolderIds, function(folderId) {
-    var hasAccess = this.folders[folderId];
-    if (hasAccess) {
-      var hasRequested = false;
-    } else {
-      var hasRequested = this.isFolderRequested(folderId);
-    }
-    folders.push({
-      'folder_id': folderId,
-      'has_requested': hasRequested,
-      'has_access': hasAccess
-    });
-  }.bind(this));
-  console.log(folders);
   var user = {
     'email': this.email,
-    'folders': folders
+    'folders': this.user.folders
   };
   this.update(user);
 };
@@ -137,12 +95,6 @@ buildServer.ng.ManageUserController.prototype.update = function(user) {
 buildServer.ng.ManageUserController.prototype.setUserResponse =
     function(user) {
   this.user = user;
-  for (var i in this.user.folders) {
-    var folder = this.user.folders[i];
-    if (folder['has_access']) {
-      this.folders[folder['folder_id']] = true;
-    }
-  }
   this.$scope.$apply();
 };
 

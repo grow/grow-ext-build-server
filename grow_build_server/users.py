@@ -143,6 +143,16 @@ class PersistentUser(ndb.Model):
                     return False
         return True
 
+    def normalize_folders(self):
+        ids_to_folders = {}
+        all_folders = list_folder_messages()
+        for folder in all_folders:
+            ids_to_folders[folder.folder_id] = folder
+        for folder in self.folders:
+            ids_to_folders[folder.folder_id].has_access = folder.has_access
+            ids_to_folders[folder.folder_id].has_requested = folder.has_requested
+        return sorted(all_folders, key=lambda folder: folder.title)
+
     @classmethod
     def import_from_sheets(cls, sheet_id, sheet_gid, created_by=None):
         rows = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
@@ -241,7 +251,7 @@ class PersistentUser(ndb.Model):
         message.domain = self.domain
         message.email = self.email
         if self.folders:
-            message.folders = self.folders
+            message.folders = self.normalize_folders()
         message.folder_status = self.folder_status
         message.modified = self.modified
         message.num_folders = self.num_folders
@@ -544,8 +554,11 @@ class UsersService(remote.Service):
         kwargs = {
             'folders': user.folders,
         }
+        from . import access_requests
         access_requests.send_email_to_existing_user(
                 email, email_config, kwargs)
+        resp = GetUserResponse()
+        return resp
 
     @remote.method(ImportFromSheetsRequest, ImportFromSheetsResponse)
     def import_from_sheets(self, request):

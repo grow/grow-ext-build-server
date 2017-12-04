@@ -47,10 +47,17 @@ class SheetsAuthMiddleware(object):
         user = users.User.get_from_environ()
         persistent_user = user and user.get_persistent()
 
-        # Redirect to the sign in page if not signed in.
-        if not user or not persistent_user:
+        # User isn't signed in.
+        if not user:
             if self.sign_in_path:
                 url = '{}?next={}'.format(self.sign_in_path, path)
+                return self.redirect(url, start_response)
+            return
+
+        # User isn't registered
+        if not persistent_user:
+            if self.sign_in_path:
+                url = self.sign_in_path
                 return self.redirect(url, start_response)
             else:
                 status = '401 Unauthorized'
