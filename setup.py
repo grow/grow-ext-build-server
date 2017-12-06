@@ -12,8 +12,8 @@ setup(
     ],
     package_data={
         'grow_build_server': [
-            'templates/dist/css/*.css',
-            'templates/dist/js/*.js',
+            'dist/css/*.css',
+            'dist/js/*.js',
             'templates/*.html',
         ],
     },
