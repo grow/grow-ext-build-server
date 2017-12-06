@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='grow-ext-build-server',
-    version='1.0.2',
+    version='1.0.3',
     license='MIT',
     author='Grow Authors',
     author_email='hello@grow.io',
@@ -11,7 +11,11 @@ setup(
         'grow_build_server',
     ],
     package_data={
-        'grow_build_server': ['templates/*.html'],
+        'grow_build_server': [
+            'templates/dist/css/*.css',
+            'templates/dist/js/*.js',
+            'templates/*.html',
+        ],
     },
     install_requires=[
         'bs4',
