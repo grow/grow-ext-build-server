@@ -34,8 +34,8 @@ FOLDERS = _list_folders()
 class FolderMessage(messages.Message):
     folder_id = messages.StringField(1)
     title = messages.StringField(2)
-    has_access = messages.BooleanField(3)
-    has_requested = messages.BooleanField(4)
+    has_access = messages.BooleanField(3, default=False)
+    has_requested = messages.BooleanField(4, default=False)
     is_locked = messages.BooleanField(6)
     regex = messages.StringField(5)
 
@@ -134,12 +134,12 @@ class PersistentUser(ndb.Model):
         return email.strip().lower().replace(' ', '')
 
     def can_read(self, path_from_url):
-        folders = list_folder_messages()
-        folder_ids_with_access = [folder.folder_id for folder in self.folders]
-        for folder in folders:
+        for folder in self.folders:
             path_regex = folder.regex
             if re.match(path_regex, path_from_url):
-                if folder.folder_id not in folder_ids_with_access:
+                import logging
+                logging.info('matched {}'.format(path_regex))
+                if not folder.has_access:
                     return False
         return True
 
@@ -149,8 +149,12 @@ class PersistentUser(ndb.Model):
         for folder in all_folders:
             ids_to_folders[folder.folder_id] = folder
         for folder in self.folders:
+            # Old folder no longer used.
+            if folder.folder_id not in ids_to_folders:
+                continue
             ids_to_folders[folder.folder_id].has_access = folder.has_access
             ids_to_folders[folder.folder_id].has_requested = folder.has_requested
+        all_folders = ids_to_folders.values()
         return sorted(all_folders, key=lambda folder: folder.title)
 
     @classmethod
@@ -211,7 +215,7 @@ class PersistentUser(ndb.Model):
         if folders:
             user.folders = folders
         else:
-            user.folders = list_folder_messages(default_has_access=True)
+            user.folders = list_folder_messages()
         user.created_by = created_by
         user.modified_by = created_by
         return user
@@ -268,22 +272,15 @@ class PersistentUser(ndb.Model):
             self.questions = questions
         if reason:
             self.reason = reason
-        self.folders = self.folders or []
-        existing_folder_ids = [folder.folder_id for folder in self.folders]
-        all_folders = list_folder_messages()
-        requested_folders = folders
-        for folder in requested_folders:
-            if folder.folder_id not in existing_folder_ids:
-                message = FolderMessage(
-                    folder_id=folder.folder_id,
-                    has_requested=True)
-                self.folders.append(message)
-            else:
-                for i, existing_folder in enumerate(self.folders):
-                    if folder.folder_id == existing_folder.folder_id:
-                        self.folders[i].has_requested = True
-                        import logging
-                        logging.info('Updated')
+        all_folders = self.normalize_folders()
+        requested_folder_ids = [folder.folder_id for folder in folders]
+        for i, folder in enumerate(all_folders):
+            is_requested = folder.folder_id in requested_folder_ids
+            # Set newly-requested folders while leaving previously requested
+            # folders as-is.
+            if is_requested:
+                all_folders[i].has_requested = is_requested
+        self.folders = all_folders
         self.put()
         if send_notification:
             build_server_config = config.instance()
