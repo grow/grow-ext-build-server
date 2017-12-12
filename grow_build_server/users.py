@@ -158,12 +158,14 @@ class PersistentUser(ndb.Model):
         return sorted(all_folders, key=lambda folder: folder.title)
 
     @classmethod
-    def import_from_sheets(cls, sheet_id, sheet_gid, created_by=None):
+    def import_from_sheets(cls, sheet_id, sheet_gid, folders=None,
+                           created_by=None):
         rows = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         emails = [row['email'] for row in rows]
-        folders = list_folder_messages(default_has_access=True)
-        return cls.create_multi(emails, folders=folders,
-                                created_by=created_by)
+        if not folders:
+            folders = list_folder_messages(default_has_access=True)
+        return cls.create_or_update_multi(
+                emails, folders=folders, created_by=created_by)
 
     @classmethod
     def to_csv(cls):
@@ -219,6 +221,29 @@ class PersistentUser(ndb.Model):
         user.created_by = created_by
         user.modified_by = created_by
         return user
+
+    def add_folders(self, folders):
+        ids_to_folders = {}
+        for folder in self.normalize_folders():
+            ids_to_folders[folder.folder_id] = folder
+        for folder in folders:
+            if folder.has_access and folder.folder_id in ids_to_folders:
+                ids_to_folders[folder.folder_id].has_access = True
+        all_folders = ids_to_folders.values()
+        all_folders = sorted(all_folders, key=lambda folder: folder.title)
+        self.folders = all_folders
+
+    @classmethod
+    def create_or_update_multi(cls, emails, folders=None, created_by=None):
+        keys = [ndb.Key('PersistentUser', cls.normalize_email(email)) for email in emails if email]
+        ents = ndb.get_multi(keys)
+        for i, ent in enumerate(ents):
+            if not ent:
+                ents[i] = cls._create(emails[i], folders=folders, created_by=created_by)
+                continue
+            ent.add_folders(folders)
+        ndb.put_multi(ents)
+        return ents
 
     @classmethod
     def create_multi(cls, emails, folders=None, created_by=None):
@@ -292,19 +317,10 @@ class PersistentUser(ndb.Model):
             from . import access_requests
             access_requests.send_email_to_admins(req, email_config=email_config)
 
-    def update_folders(self, folders):
+    def update_folders(self, folders, updated_by=None):
         self.folders = folders
-#        self.folders = self.folders or []
-#        updated_folder_ids = [folder.folder_id for folder in folders]
-#        for i, folder in enumerate(self.folders):
-#            if folder.folder_id in updated_folder_ids:
-#                del self.folders[i]
-#        for folder in folders:
-#            message = FolderMessage(
-#                folder_id=folder.folder_id,
-#                has_access=folder.has_access,
-#                has_requested=folder.has_requested)
-#            self.folders.append(message)
+        if updated_by:
+            self.updated_by = updated_by
         self.put()
 
 
@@ -446,6 +462,7 @@ class SearchUsersResponse(messages.Message):
 class ImportFromSheetsRequest(messages.Message):
     sheet_id = messages.StringField(1)
     sheet_gid = messages.StringField(2)
+    folders = messages.MessageField(FolderMessage, 3, repeated=True)
 
 
 class ImportFromSheetsResponse(messages.Message):
@@ -530,7 +547,7 @@ class UsersService(remote.Service):
     @remote.method(UpdateUserRequest, UpdateUserResponse)
     def update(self, request):
         user = PersistentUser.get(request.user.email)
-        user.update_folders(request.user.folders)
+        user.update_folders(request.user.folders, updated_by=self.me)
         resp = UpdateUserResponse()
         resp.user = user.to_message() if user else None
         return resp
@@ -563,6 +580,7 @@ class UsersService(remote.Service):
         sheet_gid = request.sheet_gid
         ents = PersistentUser.import_from_sheets(
             sheet_id=sheet_id, sheet_gid=sheet_gid,
+            folders=request.folders,
             created_by=self.me)
         resp = ImportFromSheetsResponse()
         resp.num_imported = len(ents)

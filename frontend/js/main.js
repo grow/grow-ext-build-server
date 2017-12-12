@@ -110,6 +110,7 @@ buildServer.ng.ManageUserController.prototype.get = function() {
 
 buildServer.ng.ManageUsersController = function($scope) {
   this.$scope = $scope;
+  this.foldersToImport = {};
   this.user = {};
   this.search();
 };
@@ -117,9 +118,11 @@ buildServer.ng.ManageUsersController = function($scope) {
 
 buildServer.ng.ManageUsersController.prototype.search =
     function(query, opt_nextCursor) {
+  this.isLoadingUsers = true;
   buildServer.rpc('users.search', {
     'query': query
   }).then(function(resp) {
+    this.isLoadingUsers = false;
     this.users = resp['users'];
     this.$scope.$apply();
   }.bind(this));
@@ -147,9 +150,17 @@ buildServer.ng.ManageUsersController.prototype.create = function(email) {
 
 
 buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheetId, sheetGid) {
+  var folders = [];
   this.isWorking = true;
+  for (var folderId in this.foldersToImport) {
+    folders.push({
+      'folder_id': folderId,
+      'has_access': true
+    });
+  }
   buildServer.rpc('users.import_from_sheets', {
     'sheet_id': sheetId,
+    'folders': folders,
     'sheet_gid': sheetGid,
   }).then(function(resp) {
     console.log(resp);
@@ -157,5 +168,9 @@ buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheet
     this.numImported = resp['num_imported'];
     this.$scope.$apply();
     this.search();
+  }.bind(this), function() {
+    this.isWorking = false;
+    this.importError = true;
+    this.$scope.$apply();
   }.bind(this));
 };

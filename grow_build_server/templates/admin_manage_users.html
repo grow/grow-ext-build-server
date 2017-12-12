@@ -32,12 +32,42 @@
         Import users from Google Sheets
       </div>
       <div class="form__body">
-        You can import users from Google Sheets. There should be one column named <b>email</b>. Users will have access to all unlocked folders by default. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
+        You can import users from Google Sheets. There should be one column named <b>email</b>. Users will have access to all unlocked folders by default unless specified otherwise in the options below. If a user already has access, importing will add access to additional folders. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
       </div>
+
+      <div class="form__status form__status--options">
+        <a ng-click="ctrl.showMore = !ctrl.showMore">Show options</a>
+      </div>
+      <div class="form__status form__status--options" ng-if="ctrl.showMore">
+        <table class="table">
+          {% for folder in folders|sort(attribute='title') %}
+          <tr>
+            <td class="table__row__checkbox">
+              <input
+                ng-model="ctrl.foldersToImport['{{folder.folder_id}}']"
+                type="checkbox"
+                id="folder-{{folder.folder_id}}">
+            </td>
+            <td>
+              <label for="folder-{{folder.folder_id}}" class="table__row__checkbox-label">
+                {{folder.title}}
+                {% if 'Archive' in folder.title %}
+                  <i class="material-icons">lock</i>
+                {% endif %}
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+
       <div class="form__row">
         <input ng-model="ctrl.importSheetId" type="text" class="form__row__field__control" placeholder="Google Sheets ID">
         <input ng-model="ctrl.importSheetGid" type="text" class="form__row__field__control" placeholder="Google Sheets GID">
         <button type="submit" class="button" ng-disabled="ctrl.isWorking">Import</button>
+      </div>
+      <div class="form__status" ng-if="ctrl.importError && !ctrl.numImported && !ctrl.isWorking">
+        Sorry, an error occurred.
       </div>
       <div class="form__status" ng-if="ctrl.isWorking">
         Working...
@@ -58,6 +88,10 @@
       </div>
     </form>
     <button onclick="window.location = '/_grow/users/csv'" class="button button--grey">Download CSV</button>
+  </div>
+
+  <div class="main__card" ng-if="ctrl.isLoadingUsers && !ctrl.users.length">
+    Loading...
   </div>
 
   <div class="main__card" ng-if="ctrl.users.length">
