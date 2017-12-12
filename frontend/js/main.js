@@ -147,11 +147,15 @@ buildServer.ng.ManageUsersController.prototype.create = function(email) {
 
 
 buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheetId, sheetGid) {
+  this.isWorking = true;
   buildServer.rpc('users.import_from_sheets', {
     'sheet_id': sheetId,
     'sheet_gid': sheetGid,
   }).then(function(resp) {
     console.log(resp);
+    this.isWorking = false;
+    this.numImported = resp['num_imported'];
     this.$scope.$apply();
+    this.search();
   }.bind(this));
 };

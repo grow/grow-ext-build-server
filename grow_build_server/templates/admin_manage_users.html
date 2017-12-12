@@ -2,7 +2,7 @@
 
 {% block main %}
 <div class="main__title">Users</div>
-<div ng-controller="ManageUsersController as ctrl">
+<div ng-controller="ManageUsersController as ctrl" ng-cloak>
   <div class="main__card main__card--sm">
     <form
         class="form"
@@ -37,7 +37,13 @@
       <div class="form__row">
         <input ng-model="ctrl.importSheetId" type="text" class="form__row__field__control" placeholder="Google Sheets ID">
         <input ng-model="ctrl.importSheetGid" type="text" class="form__row__field__control" placeholder="Google Sheets GID">
-        <button type="submit" class="button">Import</button>
+        <button type="submit" class="button" ng-disabled="ctrl.isWorking">Import</button>
+      </div>
+      <div class="form__status" ng-if="ctrl.isWorking">
+        Working...
+      </div>
+      <div class="form__status" ng-if="ctrl.numImported >= 0 && !ctrl.isWorking">
+        Imported <b>[[ctrl.numImported]]</b> users.
       </div>
     </form>
   </div>
