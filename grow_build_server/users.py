@@ -137,8 +137,6 @@ class PersistentUser(ndb.Model):
         for folder in self.folders:
             path_regex = folder.regex
             if re.match(path_regex, path_from_url):
-                import logging
-                logging.info('matched {}'.format(path_regex))
                 if not folder.has_access:
                     return False
         return True

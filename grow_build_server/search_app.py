@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 from protorpc import messages
 from protorpc import remote
 from protorpc.wsgi import service
+from . import users
 import bs4
 import html2text
 import logging
@@ -166,6 +167,10 @@ def _get_field(doc, name):
             return field.value
 
 
+def clean_docs(user, docs):
+    return [doc for doc in docs if user.can_read(doc.path)]
+
+
 def execute_search(message):
     options = search.QueryOptions(snippeted_fields=['html'])
     if message.cursor:
@@ -204,8 +209,12 @@ class SearchService(remote.Service):
     def search(self, request):
         if not request.query:
             raise remote.ApplicationError('Missing: query')
+        user = users.User.get_from_environ()
+        persistent_user = user and user.get_persistent()
         docs, cursor = execute_search(request.query)
+        docs = clean_docs(persistent_user, docs)
         resp = SearchResponse()
-        resp.documents = docs
+        if persistent_user:
+            resp.documents = docs
         resp.cursor = cursor
         return resp
