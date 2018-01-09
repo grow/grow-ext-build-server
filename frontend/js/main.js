@@ -8,6 +8,7 @@ buildServer.main = function() {
   });
   app.controller('ManageUsersController', buildServer.ng.ManageUsersController);
   app.controller('ManageUserController', buildServer.ng.ManageUserController);
+  app.controller('BuildStatusController', buildServer.ng.BuildStatusController);
   angular.bootstrap(document, ['buildServer']);
 };
 
@@ -173,4 +174,17 @@ buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheet
     this.importError = true;
     this.$scope.$apply();
   }.bind(this));
+};
+
+
+buildServer.ng.BuildStatusController = function() {
+};
+
+
+buildServer.ng.BuildStatusController.prototype.rebuild = function(url) {
+  var resp = $.ajax({
+      url: url,
+      type: 'POST'
+  });
+  this.isRebuildRequested = true;
 };

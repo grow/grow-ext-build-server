@@ -120,4 +120,30 @@
   </div>
 
 </div>
+
+{% if build_server_config.build_status_badge_url %}
+<div ng-controller="BuildStatusController as ctrl">
+	<div class="main__title main__title--margin-top">Status</div>
+	<div class="main__card main__card--sm">
+		<form class="form form--secondary">
+			<div class="form__title">
+				Build status
+			</div>
+			<div class="form__body form__body--aligned">
+				<img src="{{build_server_config.build_status_badge_url}}">
+				{% if build_server_config.build_status_rebuild_url %}
+					<a ng-hide="ctrl.isRebuildRequested" ng-click="ctrl.rebuild('{{build_server_config.build_status_rebuild_url}}')" href="javascript:">Rebuild now</a>
+				  <span ng-if="ctrl.isRebuildRequested">Rebuild started (ETA ~20 minutes)</span>
+				{% endif %}
+			</div>
+			<div class="form__title">
+				Last deployed
+			</div>
+			<div class="form__body">
+				{{timestamp}}
+			</div>
+		</form>
+	</div>
+</div>
+{% endif %}
 {% endblock %}

@@ -16,6 +16,14 @@ APPID = app_identity.get_application_id()
 SERVICE_ACCOUNT_EMAIL = '{}@appspot.gserviceaccount.com'.format(APPID)
 
 
+def get_build_timestamp():
+    version_id = os.getenv('CURRENT_VERSION_ID').split('.')[-1]
+    if not version_id:
+      return
+    timestamp = long(version_id) / pow(2, 28)
+    return datetime.datetime.fromtimestamp(timestamp).strftime('%d/%m/%y %X')
+
+
 class SeenAccessRequest(ndb.Model):
     email = ndb.StringProperty()
     timestamp = ndb.StringProperty()
@@ -247,6 +255,8 @@ class ManageUsersHandler(webapp2.RequestHandler):
         template = jinja2_env().get_template('admin_manage_users.html')
         html = template.render({
             'service_account_email': SERVICE_ACCOUNT_EMAIL,
+            'build_server_config': self.app.config,
+            'timestamp': get_build_timestamp(),
             'folders': users.list_folder_messages(),
         })
         self.response.out.write(html)
