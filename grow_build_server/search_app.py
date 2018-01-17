@@ -15,6 +15,11 @@ INDEX = 'pages'
 NAMESPACE = os.getenv('CURRENT_VERSION_ID')
 
 
+class FieldMessage(messages.Message):
+    name = messages.StringField(1)
+    value = messages.StringField(2)
+
+
 class DocumentMessage(messages.Message):
     title = messages.StringField(1)
     locale = messages.StringField(2)
@@ -22,6 +27,7 @@ class DocumentMessage(messages.Message):
     territory = messages.StringField(4)
     path = messages.StringField(5)
     snippet = messages.StringField(6)
+    fields = messages.MessageField(FieldMessage, 7, repeated=True)
 
 
 class QueryMessage(messages.Message):
@@ -79,48 +85,88 @@ def _parse_language_from_path(doc_id, locales):
         return language
 
 
+def _get_search_items_from_soup(soup):
+    parent_tags = soup.find_all(lambda tag: 'data-grow-search-item' in tag.attrs)
+    search_items = []
+    for parent in parent_tags:
+        key_tags = parent.find_all(lambda tag: 'data-grow-search-item-key' in tag.attrs)
+        keys_to_values = {}
+        doc_id = parent.get('data-grow-search-item-doc-id').replace(' ', '--')
+        if doc_id:
+            keys_to_values['doc_id'] = doc_id
+        meta_description = parent.get('data-grow-search-item-meta-description')
+        if meta_description:
+            keys_to_values['meta_description'] = meta_description
+        for tag in key_tags:
+            key = tag.get('data-grow-search-item-key')
+            value = tag.get('data-grow-search-item-value')
+            keys_to_values[key] = value
+        search_items.append(keys_to_values)
+    return search_items
+
+
 def _get_fields_from_file(root, file_path, locales=None):
     doc_id = file_path[:-10] \
             if file_path.endswith('/index.html') else file_path
     doc_id = doc_id[len(root):]
     html = open(file_path).read()
     soup = bs4.BeautifulSoup(html, 'lxml')
-    fields = {}
-    fields['doc_id'] = doc_id
-    fields['language'] = _parse_language_from_path(doc_id, locales)
-    fields['locale'] = _parse_locale_from_path(doc_id, locales)
-    # Max size, 500 is some buffer for the rest of the request.
-    html = html.decode('utf-8')
-    fields['html'] = html2text.html2text(html)
-    fields['title'] = soup.title.string.strip()
-    return fields
+    search_items = _get_search_items_from_soup(soup)
+    fields_list = []
+    if not search_items:
+        fields = {}
+        fields['doc_id'] = doc_id
+        fields['language'] = _parse_language_from_path(doc_id, locales)
+        fields['locale'] = _parse_locale_from_path(doc_id, locales)
+        # Max size, 500 is some buffer for the rest of the request.
+        html = html.decode('utf-8')
+        fields['html'] = html2text.html2text(html)
+        fields['title'] = soup.title.string.strip()
+        fields_list.append(fields)
+    if search_items:
+        for item_fields in search_items:
+            fields = {}
+            if 'doc_id' not in item_fields:
+                fields['doc_id'] = doc_id
+            fields['language'] = _parse_language_from_path(doc_id, locales)
+            fields['locale'] = _parse_locale_from_path(doc_id, locales)
+            fields['html'] = ''  # TODO
+            fields.update(item_fields)
+            fields_list.append(fields)
+    return fields_list
 
 
-def create_searchable_doc(root, file_path, locales=None):
-    parsed = _get_fields_from_file(root, file_path, locales=locales)
-    try:
-        fields = [
-            search.AtomField(
-                name='locale',
-                value=parsed['locale']),
-            search.AtomField(
-                name='path',
-                value=parsed['doc_id'],
-                language=parsed['language']),
-            search.TextField(
-                name='title',
-                value=parsed['title'],
-                language=parsed['language']),
-            search.HtmlField(
-                name='html',
-                value=parsed['html'],
-                language=parsed['language']),
-        ]
-        doc = search.Document(doc_id=parsed['doc_id'], fields=fields)
-        return doc
-    except Exception as e:
-        logging.error('Error indexing doc -> {}'.format(parsed['doc_id']))
-        raise
+def create_searchable_docs(root, file_path, locales=None):
+    searchable_docs = []
+    fields_list = _get_fields_from_file(root, file_path, locales=locales)
+    for parsed_fields in fields_list:
+        try:
+            fields = [
+                search.AtomField(
+                    name='locale',
+                    value=parsed_fields['locale']),
+                search.AtomField(
+                    name='path',
+                    value=parsed_fields['doc_id'],
+                    language=parsed_fields['language']),
+                search.TextField(
+                    name='title',
+                    value=parsed_fields['title'],
+                    language=parsed_fields['language']),
+                search.HtmlField(
+                    name='html',
+                    value=parsed_fields['html'],
+                    language=parsed_fields['language']),
+            ]
+            existing_fields = ['locale', 'path', 'title', 'html']
+            for name, value in parsed_fields.iteritems():
+                fields.append(search.TextField(name=name, value=value, language=parsed_fields['language']))
+            doc = search.Document(doc_id=parsed_fields['doc_id'], fields=fields)
+            searchable_docs.append(doc)
+        except Exception as e:
+            logging.error('Error indexing doc -> {}'.format(parsed_fields['doc_id']))
+            raise
+    return searchable_docs
 
 
 def collect_searchable_docs(root, locales=None):
@@ -130,8 +176,9 @@ def collect_searchable_docs(root, locales=None):
             if not filename.endswith('.html'):
                 continue
             path = os.path.join(dir_root, filename)
-            doc = create_searchable_doc(root, path, locales=locales)
-            searchable_docs.append(doc)
+            docs = create_searchable_docs(root, path, locales=locales)
+            for doc in docs:
+                searchable_docs.append(doc)
     return searchable_docs
 
 
@@ -167,6 +214,13 @@ def _get_field(doc, name):
             return field.value
 
 
+def _get_all_fields(doc):
+    messages = []
+    for field in doc.fields:
+        messages.append(FieldMessage(name=field.name, value=field.value))
+    return messages
+
+
 def clean_docs(user, docs):
     return [doc for doc in docs if user.can_read(doc.path)]
 
@@ -190,6 +244,7 @@ def execute_search(message):
             doc_message.title = _get_field(doc, 'title')
             doc_message.path = _get_field(doc, 'path')
             doc_message.snippet = _get_expression(doc, 'html')
+            doc_message.fields = _get_all_fields(doc)
             docs.append(doc_message)
     return docs, cursor
 
