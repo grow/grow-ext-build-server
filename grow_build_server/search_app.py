@@ -12,6 +12,7 @@ import os
 import webapp2
 
 INDEX = 'pages'
+IS_DEV = os.getenv('SERVER_SOFTWARE', '').startswith('Dev')
 NAMESPACE = os.getenv('CURRENT_VERSION_ID')
 
 
@@ -90,17 +91,17 @@ def _get_search_items_from_soup(soup):
     search_items = []
     for parent in parent_tags:
         key_tags = parent.find_all(lambda tag: 'data-grow-search-item-key' in tag.attrs)
-        keys_to_values = {}
+        keys_to_values = []
         doc_id = parent.get('data-grow-search-item-doc-id').replace(' ', '--')
         if doc_id:
-            keys_to_values['doc_id'] = doc_id
+            keys_to_values.append(('doc_id', doc_id))
         meta_description = parent.get('data-grow-search-item-meta-description')
         if meta_description:
-            keys_to_values['meta_description'] = meta_description
+            keys_to_values.append(('meta_description', meta_description))
         for tag in key_tags:
             key = tag.get('data-grow-search-item-key')
             value = tag.get('data-grow-search-item-value')
-            keys_to_values[key] = value
+            keys_to_values.append((key, value))
         search_items.append(keys_to_values)
     return search_items
 
@@ -114,24 +115,25 @@ def _get_fields_from_file(root, file_path, locales=None):
     search_items = _get_search_items_from_soup(soup)
     fields_list = []
     if not search_items:
-        fields = {}
-        fields['doc_id'] = doc_id
-        fields['language'] = _parse_language_from_path(doc_id, locales)
-        fields['locale'] = _parse_locale_from_path(doc_id, locales)
+        fields = []
+        fields.append(('doc_id', doc_id))
+        fields.append(('language', _parse_language_from_path(doc_id, locales)))
+        fields.append(('locale', _parse_locale_from_path(doc_id, locales)))
         # Max size, 500 is some buffer for the rest of the request.
         html = html.decode('utf-8')
-        fields['html'] = html2text.html2text(html)
-        fields['title'] = soup.title.string.strip()
+        fields.append(('html', html2text.html2text(html)))
+        fields.append(('title', soup.title.string.strip()))
         fields_list.append(fields)
     if search_items:
+        # TODO: Make this support multiple keys with the same name.
         for item_fields in search_items:
-            fields = {}
+            fields = []
             if 'doc_id' not in item_fields:
-                fields['doc_id'] = doc_id
-            fields['language'] = _parse_language_from_path(doc_id, locales)
-            fields['locale'] = _parse_locale_from_path(doc_id, locales)
-            fields['html'] = ''  # TODO
-            fields.update(item_fields)
+                fields.append(('doc_id', doc_id))
+            fields.append(('language', _parse_language_from_path(doc_id, locales)))
+            fields.append(('locale', _parse_locale_from_path(doc_id, locales)))
+            fields.append(('html', ''))  # TODO
+            fields += item_fields
             fields_list.append(fields)
     return fields_list
 
@@ -139,7 +141,8 @@ def _get_fields_from_file(root, file_path, locales=None):
 def create_searchable_docs(root, file_path, locales=None):
     searchable_docs = []
     fields_list = _get_fields_from_file(root, file_path, locales=locales)
-    for parsed_fields in fields_list:
+    for field_names_to_values in fields_list:
+        parsed_fields = dict(field_names_to_values)
         try:
             fields = [
                 search.AtomField(
@@ -159,12 +162,12 @@ def create_searchable_docs(root, file_path, locales=None):
                     language=parsed_fields['language']),
             ]
             existing_fields = ['locale', 'path', 'title', 'html']
-            for name, value in parsed_fields.iteritems():
+            for name, value in field_names_to_values:
                 fields.append(search.TextField(name=name, value=value, language=parsed_fields['language']))
             doc = search.Document(doc_id=parsed_fields['doc_id'], fields=fields)
             searchable_docs.append(doc)
         except Exception as e:
-            logging.error('Error indexing doc -> {}'.format(parsed_fields['doc_id']))
+            logging.error('Error indexing doc -> {}'.format(field_names_to_values))
             raise
     return searchable_docs
 
@@ -267,9 +270,10 @@ class SearchService(remote.Service):
         user = users.User.get_from_environ()
         persistent_user = user and user.get_persistent()
         docs, cursor = execute_search(request.query)
-        docs = clean_docs(persistent_user, docs)
+        if not IS_DEV:
+            docs = clean_docs(persistent_user, docs)
         resp = SearchResponse()
-        if persistent_user:
+        if IS_DEV or persistent_user:
             resp.documents = docs
         resp.cursor = cursor
         return resp
