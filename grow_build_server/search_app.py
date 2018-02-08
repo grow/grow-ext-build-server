@@ -98,6 +98,9 @@ def _get_search_items_from_soup(soup):
         meta_description = parent.get('data-grow-search-item-meta-description')
         if meta_description:
             keys_to_values.append(('meta_description', meta_description))
+        permalink_path = parent.get('data-grow-search-item-doc-permalink-path')
+        if permalink_path:
+            keys_to_values.append(('permalink_path', permalink_path))
         for tag in key_tags:
             key = tag.get('data-grow-search-item-key')
             value = tag.get('data-grow-search-item-value')
@@ -150,7 +153,7 @@ def create_searchable_docs(root, file_path, locales=None):
                     value=parsed_fields['locale']),
                 search.AtomField(
                     name='path',
-                    value=parsed_fields['doc_id'],
+                    value=(parsed_fields.get('permalink_path') or parsed_fields.get('doc_id')),
                     language=parsed_fields['language']),
                 search.TextField(
                     name='title',
