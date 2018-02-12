@@ -92,15 +92,24 @@ def _get_search_items_from_soup(soup):
     for parent in parent_tags:
         key_tags = parent.find_all(lambda tag: 'data-grow-search-item-key' in tag.attrs)
         keys_to_values = []
+
         doc_id = parent.get('data-grow-search-item-doc-id').replace(' ', '--')
         if doc_id:
             keys_to_values.append(('doc_id', doc_id))
+
         meta_description = parent.get('data-grow-search-item-meta-description')
         if meta_description:
             keys_to_values.append(('meta_description', meta_description))
+
         permalink_path = parent.get('data-grow-search-item-doc-permalink-path')
         if permalink_path:
             keys_to_values.append(('permalink_path', permalink_path))
+
+        locale = parent.get('data-grow-search-item-locale')
+        if locale:
+            locale = locale.lower()
+            keys_to_values.append(('locale', locale))
+
         for tag in key_tags:
             key = tag.get('data-grow-search-item-key')
             value = tag.get('data-grow-search-item-value')
@@ -134,7 +143,8 @@ def _get_fields_from_file(root, file_path, locales=None):
             if 'doc_id' not in item_fields:
                 fields.append(('doc_id', doc_id))
             fields.append(('language', _parse_language_from_path(doc_id, locales)))
-            fields.append(('locale', _parse_locale_from_path(doc_id, locales)))
+            if 'locale' not in item_fields:
+                fields.append(('locale', _parse_locale_from_path(doc_id, locales)))
             fields.append(('html', ''))  # TODO
             fields += item_fields
             fields_list.append(fields)
