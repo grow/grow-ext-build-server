@@ -1,5 +1,6 @@
 from google.appengine.api import memcache
 from google.appengine.api import search
+from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 from protorpc import messages
 from protorpc import remote
@@ -199,10 +200,26 @@ def collect_searchable_docs(root, locales=None):
 
 
 def index_searchable_docs(root, locales=None):
+    for locale in locales:
+        deferred.defer(_index_locale, root, [locale])
+
+
+def _index_locale(root, locales):
     searchable_docs = collect_searchable_docs(root, locales=locales)
-    index = search.Index(INDEX, namespace=NAMESPACE)
-    logging.info('Using FTS namespace -> {}'.format(NAMESPACE))
+    locales_to_docs = {}
     for doc in searchable_docs:
+        locale = _get_field(doc, 'locale')
+        if locale not in locales_to_docs:
+            locales_to_docs[locale] = []
+        locales_to_docs[locale].append(doc)
+    for locale in locales_to_docs.keys():
+        _index_searchable_docs(docs)
+
+
+def _index_searchable_docs(docs):
+    for doc in docs:
+        index = search.Index(INDEX, namespace=NAMESPACE)
+        logging.info('Using FTS namespace -> {}'.format(NAMESPACE))
         index.put(doc)
         logging.info('Indexed -> {}'.format(doc.doc_id))
 
