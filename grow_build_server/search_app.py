@@ -219,9 +219,9 @@ def _index_locale(root, locales):
 def _index_searchable_docs(docs):
     for doc in docs:
         index = search.Index(INDEX, namespace=NAMESPACE)
-        logging.info('Using FTS namespace -> {}'.format(NAMESPACE))
-        index.put(doc)
+        deferred.defer(index.put, doc)
         logging.info('Indexed -> {}'.format(doc.doc_id))
+        index.put(doc)
 
 
 def check_and_index_searchable_docs(root, locales, force=False):
@@ -289,6 +289,7 @@ class IndexHandler(webapp2.RequestHandler):
         locales = self.app.config['locales']
         force = self.request.get('force')
         check_and_index_searchable_docs(root, locales, force)
+        logging.info('Using FTS namespace -> {}'.format(NAMESPACE))
 
 
 class SearchService(remote.Service):
