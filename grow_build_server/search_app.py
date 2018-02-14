@@ -213,7 +213,7 @@ def _index_locale(root, locales):
             locales_to_docs[locale] = []
         locales_to_docs[locale].append(doc)
     for locale in locales_to_docs.keys():
-        _index_searchable_docs(docs)
+        _index_searchable_docs(locales_to_docs[locale])
 
 
 def _index_searchable_docs(docs):
