@@ -39,7 +39,7 @@ class ProtectedMiddleware(object):
             return self.app(environ, start_response)
 
         user = users.User.get_from_environ()
-        persistent_user = user and users.get_persistent()
+        persistent_user = user and user.get_persistent()
 
         # User isn't signed in.
         if not user:
