@@ -21,6 +21,7 @@ setup(
         'bs4',
         'google-api-python-client',
         'google-auth',
+        'oauth2client==4.1.2',
         'html2text',
         'jinja2',
         'premailer',
