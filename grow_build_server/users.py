@@ -134,6 +134,9 @@ class PersistentUser(ndb.Model):
         return email.strip().lower().replace(' ', '')
 
     def can_read(self, path_from_url):
+        # When FOLDERS have changed after the user was added.
+        # This should be moved to when PersistentUser is instantiated.
+        self.folders = self.normalize_folders()
         for folder in self.folders:
             path_regex = folder.regex
             if re.match(path_regex, path_from_url):
