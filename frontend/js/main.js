@@ -112,6 +112,7 @@ buildServer.ng.ManageUserController.prototype.get = function() {
 buildServer.ng.ManageUsersController = function($scope) {
   this.$scope = $scope;
   this.foldersToImport = {};
+  this.removeAccess = false;
   this.user = {};
   this.search();
 };
@@ -160,6 +161,7 @@ buildServer.ng.ManageUsersController.prototype.importFromSheets = function(sheet
     });
   }
   buildServer.rpc('users.import_from_sheets', {
+    'remove_access': this.removeAccess,
     'sheet_id': sheetId,
     'folders': folders,
     'sheet_gid': sheetGid,

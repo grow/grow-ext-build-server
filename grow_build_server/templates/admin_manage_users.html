@@ -32,13 +32,27 @@
         Import users from Google Sheets
       </div>
       <div class="form__body">
-        You can import users from Google Sheets. There should be one column named <b>email</b>. Users will have access to all unlocked folders by default unless specified otherwise in the options below. If a user already has access, importing will add access to additional folders. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
+        You can import users from Google Sheets. There should be one column named <b>email</b>. Users will have access to all unlocked folders by default unless specified otherwise in the options below. If a user already has access, importing will modify access to additional folders. Ensure the sheet is shared with <b>{{service_account_email}}</b>.
       </div>
 
       <div class="form__status form__status--options">
         <a ng-click="ctrl.showMore = !ctrl.showMore">Show options</a>
       </div>
       <div class="form__status form__status--options" ng-if="ctrl.showMore">
+        <table class="table">
+          <tr>
+            <td class="table__row__checkbox">
+              <label>
+                <input
+                  ng-model="ctrl.removeAccess"
+                  value="on"
+                  type="checkbox">
+                <b>Remove access instead of adding access</b>
+              </label>
+            </td>
+          </tr>
+        </table>
+        <br>
         <table class="table">
           {% for folder in folders|sort(attribute='title') %}
           <tr>
@@ -73,7 +87,7 @@
         Working...
       </div>
       <div class="form__status" ng-if="ctrl.numImported >= 0 && !ctrl.isWorking">
-        Imported <b>[[ctrl.numImported]]</b> users.
+        Updated <b>[[ctrl.numImported]]</b> users.
       </div>
     </form>
   </div>

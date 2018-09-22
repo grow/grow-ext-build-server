@@ -160,13 +160,14 @@ class PersistentUser(ndb.Model):
 
     @classmethod
     def import_from_sheets(cls, sheet_id, sheet_gid, folders=None,
-                           created_by=None):
+                           created_by=None, remove_access=False):
         rows = google_sheets.get_sheet(sheet_id, gid=sheet_gid)
         emails = [row['email'] for row in rows]
         if not folders:
             folders = list_folder_messages(default_has_access=True)
         return cls.create_or_update_multi(
-                emails, folders=folders, created_by=created_by)
+                emails, folders=folders, created_by=created_by,
+                remove_access=remove_access)
 
     @classmethod
     def to_csv(cls):
@@ -223,26 +224,27 @@ class PersistentUser(ndb.Model):
         user.modified_by = created_by
         return user
 
-    def add_folders(self, folders):
+    def add_folders(self, folders, remove_access=False):
+        should_have_access = not remove_access
         ids_to_folders = {}
         for folder in self.normalize_folders():
             ids_to_folders[folder.folder_id] = folder
         for folder in folders:
             if folder.has_access and folder.folder_id in ids_to_folders:
-                ids_to_folders[folder.folder_id].has_access = True
+                ids_to_folders[folder.folder_id].has_access = should_have_access
         all_folders = ids_to_folders.values()
         all_folders = sorted(all_folders, key=lambda folder: folder.title)
         self.folders = all_folders
 
     @classmethod
-    def create_or_update_multi(cls, emails, folders=None, created_by=None):
+    def create_or_update_multi(cls, emails, folders=None, created_by=None, remove_access=False):
         keys = [ndb.Key('PersistentUser', cls.normalize_email(email)) for email in emails if email]
         ents = ndb.get_multi(keys)
         for i, ent in enumerate(ents):
             if not ent:
                 ents[i] = cls._create(emails[i], folders=folders, created_by=created_by)
                 continue
-            ent.add_folders(folders)
+            ent.add_folders(folders, remove_access=remove_access)
         ndb.put_multi(ents)
         return ents
 
@@ -464,6 +466,7 @@ class ImportFromSheetsRequest(messages.Message):
     sheet_id = messages.StringField(1)
     sheet_gid = messages.StringField(2)
     folders = messages.MessageField(FolderMessage, 3, repeated=True)
+    remove_access = messages.BooleanField(4)
 
 
 class ImportFromSheetsResponse(messages.Message):
@@ -582,7 +585,8 @@ class UsersService(remote.Service):
         ents = PersistentUser.import_from_sheets(
             sheet_id=sheet_id, sheet_gid=sheet_gid,
             folders=request.folders,
-            created_by=self.me)
+            created_by=self.me,
+            remove_access=request.remove_access)
         resp = ImportFromSheetsResponse()
         resp.num_imported = len(ents)
         return resp
