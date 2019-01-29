@@ -26,6 +26,6 @@ setup(
         'jinja2',
         'premailer',
         'requests',
-        'requests-toolbelt',
+        'requests-toolbelt==0.8.0',
     ],
 )
